@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../shared/widgets/course_card.dart';
 
-class UserDevelopedTab extends StatelessWidget {
+class DrawnCourseTab extends StatelessWidget {
   final int filter;
-  const UserDevelopedTab({super.key, required this.filter});
+  const DrawnCourseTab({super.key, required this.filter});
 
   @override
   Widget build(BuildContext context) {
@@ -17,8 +17,8 @@ class UserDevelopedTab extends StatelessWidget {
         isCompleted: true,
       ),
       CourseCard(
-        title: '사람 옆모습',
-        location: '인천 청라 부근',
+        title: '네잎 클로버',
+        location: '인천 문학산 부근',
         distance: '20km',
         duration: '2시간 10분',
         imageUrl: 'assets/images/course2.png',
@@ -33,8 +33,8 @@ class UserDevelopedTab extends StatelessWidget {
         isCompleted: true,
       ),
       CourseCard(
-        title: '사람 옆모습',
-        location: '인천 청라 부근',
+        title: '네잎 클로버',
+        location: '인천 문학산 부근',
         distance: '20km',
         duration: '2시간 10분',
         imageUrl: 'assets/images/course4.png',
