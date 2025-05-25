@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
-import '../../shared/data/mock_course_data.dart';
-import '../../shared/widgets/course_card.dart';
 import '../../models/course_model.dart';
+import '../../shared/widgets/course_card.dart';
+import '../../shared/data/mock_course_data.dart';
 
-class UserDevelopedTab extends StatelessWidget {
+class SavedCourseTab extends StatelessWidget {
   final int filter;
-  const UserDevelopedTab({super.key, required this.filter});
+  const SavedCourseTab({super.key, required this.filter});
 
   @override
   Widget build(BuildContext context) {
-    final List<CourseModel> allCourses = mockUserDevelopedCourses;
+    final List<CourseModel> allCourses = mocksavedCourses;
 
     final filteredCourses = allCourses.where((course) {
       if (filter == 0) return true;
@@ -20,7 +20,7 @@ class UserDevelopedTab extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       children: filteredCourses
-          .map((course) => CourseCard(course: course)) // ✅ 단일 파라미터 전달
+          .map((course) => CourseCard(course: course))
           .toList(),
     );
   }

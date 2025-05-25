@@ -20,7 +20,6 @@ class CustomToggleHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: 48,
-      padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: Colors.transparent,
         borderRadius: BorderRadius.circular(32),
@@ -41,6 +40,7 @@ class CustomToggleHeader extends StatelessWidget {
                   leftLabel,
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
+                    fontSize: 16,
                     color: selectedIndex == 0 ? Colors.white : activeColor,
                   ),
                 ),
@@ -60,6 +60,7 @@ class CustomToggleHeader extends StatelessWidget {
                   rightLabel,
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
+                    fontSize: 16,
                     color: selectedIndex == 1 ? Colors.white : activeColor,
                   ),
                 ),

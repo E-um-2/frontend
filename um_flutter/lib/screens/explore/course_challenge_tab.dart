@@ -1,48 +1,36 @@
-// lib/screens/explore/course_challenge_tab.dart
 import 'package:flutter/material.dart';
-import '../../widgets/course_card.dart';
+import 'package:go_router/go_router.dart'; // ✅ go() 사용 시 필요
+import '../../shared/data/course_challenge_data.dart';
+import '../../shared/widgets/course_card.dart';
+import '../../models/course_model.dart';
 
 class CourseChallengeTab extends StatelessWidget {
-  const CourseChallengeTab({super.key});
+  final int filter;
+  const CourseChallengeTab({super.key, required this.filter});
 
   @override
   Widget build(BuildContext context) {
+    final List<ChallengeCourseModel> allCourses = challengeCourseList;
+
+    final filteredCourses = allCourses.where((course) {
+      if (filter == 0) return true;
+      if (filter == 1) return course.isCompleted;
+      return !course.isCompleted;
+    }).toList();
+
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      children: const [
-        CourseCard(
-          title: 'Level 01. 사람 옆모습',
-          location: '인천 청라 부근',
-          distance: '20km',
-          duration: '2시간 10분',
-          imageUrl: 'lib/app/assets/images/course1.png',
-          isCompleted: true,
-        ),
-        CourseCard(
-          title: 'Level 02. 정사각형',
-          location: '인천 청라 부근',
-          distance: '20km',
-          duration: '2시간 10분',
-          imageUrl: 'lib/app/assets/images/course2.png',
-          isCompleted: true,
-        ),
-        CourseCard(
-          title: 'Level 03. 사람 옆모습',
-          location: '인천 청라 부근',
-          distance: '20km',
-          duration: '2시간 10분',
-          imageUrl: 'lib/app/assets/images/course3.png',
-          isCompleted: false,
-        ),
-        CourseCard(
-          title: 'Level 04. 사람 옆모습',
-          location: '인천 청라 부근',
-          distance: '20km',
-          duration: '2시간 10분',
-          imageUrl: 'lib/app/assets/images/course4.png',
-          isCompleted: false,
-        ),
-      ],
+      children: filteredCourses
+          .map(
+            (challengeCourse) => GestureDetector(
+              onTap: () {
+                // ✅ 디테일 페이지로 이동
+                context.push('/challenge/${challengeCourse.id}');
+              },
+              child: CourseCard(challengeCourse: challengeCourse),
+            ),
+          )
+          .toList(),
     );
   }
 }

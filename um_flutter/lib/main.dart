@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'app/root_screen.dart';
+import 'router/app_router.dart';
 
 void main() {
   runApp(const MyApp());
@@ -10,9 +10,10 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp.router(
+      routerConfig: router,
       debugShowCheckedModeBanner: false,
-      home: RootScreen(),
+      theme: ThemeData(scaffoldBackgroundColor: Colors.white),
     );
   }
 }
