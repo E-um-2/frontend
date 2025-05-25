@@ -1,19 +1,7 @@
-/*
-import 'package:flutter/material.dart';
-
-class WriteCourseScreen extends StatelessWidget {
-  const WriteCourseScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(body: Center(child: Text('코스 글 작성 화면')));
-  }
-}
-*/
-
-
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+
+import '../course/course_info_input_screen.dart';
 
 class WriteCourseScreen extends StatefulWidget {
   const WriteCourseScreen({super.key});
@@ -38,7 +26,7 @@ class _WriteCourseScreenState extends State<WriteCourseScreen> {
           GoogleMap(
             initialCameraPosition: const CameraPosition(
               // 초기 지도 위치 (Googleplex 근처)
-              target: LatLng(37.42796133580664, -122.085749655962),
+              target: LatLng(37.37431713137547, 126.63386945666375),
               zoom: 15,
             ),
             onMapCreated: (controller) {
@@ -77,11 +65,12 @@ class _WriteCourseScreenState extends State<WriteCourseScreen> {
             child: Center(
               child: ElevatedButton(
                 // 점이 2개 이상 있어야 버튼 활성화
-                onPressed: _tappedPoints.length < 2
+                onPressed: _tappedPoints.length < 2 // 찍은 점 2개 미만이면, null (버튼 비활성화)
                     ? null
                     : () {
                   // TODO: 다음 화면으로 _tappedPoints 넘기기
                   // 예: Navigator.push(...)
+                  _showCourseInfoBottomSheet(context, _tappedPoints); // 버튼 2개 이상 찍으면 버튼 활성화
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue,
@@ -96,4 +85,42 @@ class _WriteCourseScreenState extends State<WriteCourseScreen> {
       ),
     );
   }
+}
+
+// 1. BottomSheet 함수 (코스 정보 입력하기 버튼 띄우기)
+void _showCourseInfoBottomSheet(BuildContext context, List<LatLng> pathPoints) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (_) => Padding(
+      padding: const EdgeInsets.fromLTRB(20, 30, 20, 40),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text("멋진 코스가 그려졌어요!", style: TextStyle(fontSize: 18)),
+          const SizedBox(height: 20),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context); // BottomSheet 닫기
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => CourseInfoInputScreen(pathPoints: pathPoints),
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text("코스 정보 입력하기"),
+          ),
+        ],
+      ),
+    ),
+  );
 }
