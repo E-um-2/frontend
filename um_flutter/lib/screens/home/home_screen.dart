@@ -15,13 +15,23 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final Completer<GoogleMapController> _controller = Completer();
   LatLng? _currentPosition;
+
   Set<Marker> _bikeMarkers = {};
+  Set<Marker> _foodMarkers = {};
+  Set<Marker> _landmarkMarkers = {};
+  Set<Marker> _visibleMarkers = {};
+
+  bool _showFood = false;
+  bool _showLandmarks = false;
+  bool _isMenuVisible = false;
 
   @override
   void initState() {
     super.initState();
     _initLocation();
     _loadBikeStations();
+    _loadFoodMarkers();
+    _loadLandmarkMarkers();
   }
 
   Future<void> _initLocation() async {
@@ -70,6 +80,102 @@ class _HomeScreenState extends State<HomeScreen> {
 
     setState(() {
       _bikeMarkers = loadedMarkers;
+      _updateVisibleMarkers();
+    });
+  }
+
+  Future<void> _loadFoodMarkers() async {
+    final String jsonString = await rootBundle.loadString('assets/food_places.json');
+    final List<dynamic> data = json.decode(jsonString);
+
+    Set<Marker> food = {};
+
+    for (var item in data) {
+      final String? name = item['name'];
+      final double? lat = double.tryParse(item['latitude'].toString());
+      final double? lng = double.tryParse(item['longitude'].toString());
+
+      if (lat != null && lng != null) {
+        food.add(
+          Marker(
+            markerId: MarkerId("food_$name"),
+            position: LatLng(lat, lng),
+            infoWindow: InfoWindow(title: name),
+            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
+          ),
+        );
+      }
+    }
+
+    _foodMarkers = food;
+  }
+
+  Future<void> _loadLandmarkMarkers() async {
+    final String jsonString = await rootBundle.loadString('assets/landmarks.json');
+    final List<dynamic> data = json.decode(jsonString);
+
+    Set<Marker> landmarks = {};
+
+    for (var item in data) {
+      final String? name = item['name'];
+      final String? description = item['description'];
+      final double? lat = double.tryParse(item['latitude'].toString());
+      final double? lng = double.tryParse(item['longitude'].toString());
+
+      if (lat != null && lng != null) {
+        final snippetText = (description != null && description.isNotEmpty)
+            ? (description.length > 30 ? '${description.substring(0, 30)}...' : description)
+            : '';
+
+        landmarks.add(
+          Marker(
+            markerId: MarkerId("landmark_$name"),
+            position: LatLng(lat, lng),
+            infoWindow: InfoWindow(
+              title: name,
+              snippet: snippetText,
+              onTap: () {
+                showModalBottomSheet(
+                  context: context,
+                  builder: (_) => Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Text(description ?? '설명 없음',
+                        style: const TextStyle(fontSize: 16)),
+                  ),
+                );
+              },
+            ),
+            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+          ),
+        );
+      }
+    }
+
+    _landmarkMarkers = landmarks;
+    _updateVisibleMarkers();
+  }
+
+  void _updateVisibleMarkers() {
+    setState(() {
+      _visibleMarkers = {
+        ..._bikeMarkers,
+        if (_showFood) ..._foodMarkers,
+        if (_showLandmarks) ..._landmarkMarkers,
+      };
+    });
+  }
+
+  void _toggleFoodMarkers() {
+    setState(() {
+      _showFood = !_showFood;
+      _updateVisibleMarkers();
+    });
+  }
+
+  void _toggleLandmarkMarkers() {
+    setState(() {
+      _showLandmarks = !_showLandmarks;
+      _updateVisibleMarkers();
     });
   }
 
@@ -90,38 +196,66 @@ class _HomeScreenState extends State<HomeScreen> {
             onMapCreated: (GoogleMapController controller) {
               _controller.complete(controller);
             },
-            markers: _bikeMarkers,
+            markers: _visibleMarkers,
           ),
+          if (_isMenuVisible)
+            Positioned(
+              top: 80,
+              right: 16,
+              child: Column(
+                children: [
+                  ElevatedButton(
+                    onPressed: _toggleFoodMarkers,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _showFood ? Colors.orange : Colors.grey,
+                    ),
+                    child: const Text("맛집"),
+                  ),
+                  const SizedBox(height: 8),
+                  ElevatedButton(
+                    onPressed: _toggleLandmarkMarkers,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _showLandmarks ? Colors.green : Colors.grey,
+                    ),
+                    child: const Text("관광지"),
+                  ),
+                ],
+              ),
+            ),
           Positioned(
             right: 16,
-            bottom: 120, // 로봇 버튼 (위쪽)
-            child: FloatingActionButton(
-              heroTag: 'robot',
-              backgroundColor: Colors.white,
-              onPressed: () {
-                // TODO: 로봇 기능
-              },
-              child: Image.asset('assets/images/robot_icon.png', width: 24),
+            bottom: 140,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                FloatingActionButton(
+                  heroTag: 'robot',
+                  backgroundColor: Colors.white,
+                  onPressed: () {
+                    setState(() {
+                      _isMenuVisible = !_isMenuVisible;
+                    });
+                  },
+                  child: Image.asset('assets/images/robot_icon.png', width: 24),
+                ),
+                const SizedBox(height: 16),
+                FloatingActionButton(
+                  heroTag: 'location',
+                  backgroundColor: Colors.white,
+                  onPressed: () async {
+                    final location = await Location().getLocation();
+                    final GoogleMapController controller = await _controller.future;
+                    controller.animateCamera(CameraUpdate.newLatLng(
+                      LatLng(location.latitude!, location.longitude!),
+                    ));
+                  },
+                  child: const Icon(Icons.my_location, color: Colors.blue),
+                ),
+              ],
             ),
           ),
           Positioned(
-            right: 16,
-            bottom: 50, // 내 위치 버튼 (아래쪽)
-            child: FloatingActionButton(
-              heroTag: 'location',
-              backgroundColor: Colors.white,
-              onPressed: () async {
-                final location = await Location().getLocation();
-                final GoogleMapController controller = await _controller.future;
-                controller.animateCamera(CameraUpdate.newLatLng(
-                  LatLng(location.latitude!, location.longitude!),
-                ));
-              },
-              child: const Icon(Icons.my_location, color: Colors.blue),
-            ),
-          ),
-          Positioned(
-            bottom: 20,
+            bottom: 40,
             left: 0,
             right: 0,
             child: Center(
