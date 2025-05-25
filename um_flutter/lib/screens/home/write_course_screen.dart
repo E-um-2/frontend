@@ -25,7 +25,7 @@ class _WriteCourseScreenState extends State<WriteCourseScreen> {
           // 구글 지도 위젯
           GoogleMap(
             initialCameraPosition: const CameraPosition(
-              // 초기 지도 위치 (Googleplex 근처)
+              // 초기 지도 위치 (인천대학교 송도캠퍼스 설정)
               target: LatLng(37.37431713137547, 126.63386945666375),
               zoom: 15,
             ),
