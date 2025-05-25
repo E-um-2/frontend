@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../shared/data/mock_course_data.dart';
 import '../../shared/widgets/course_card.dart';
+import '../../models/course_model.dart';
 
 class UserDevelopedTab extends StatelessWidget {
   final int filter;
@@ -7,40 +9,7 @@ class UserDevelopedTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final allCourses = const [
-      CourseCard(
-        title: '사람 옆모습',
-        location: '인천 청라 부근',
-        distance: '20km',
-        duration: '2시간 10분',
-        imageUrl: 'assets/images/course1.png',
-        isCompleted: true,
-      ),
-      CourseCard(
-        title: '사람 옆모습',
-        location: '인천 청라 부근',
-        distance: '20km',
-        duration: '2시간 10분',
-        imageUrl: 'assets/images/course2.png',
-        isCompleted: false,
-      ),
-      CourseCard(
-        title: '사람 옆모습',
-        location: '인천 청라 부근',
-        distance: '20km',
-        duration: '2시간 10분',
-        imageUrl: 'assets/images/course3.png',
-        isCompleted: true,
-      ),
-      CourseCard(
-        title: '사람 옆모습',
-        location: '인천 청라 부근',
-        distance: '20km',
-        duration: '2시간 10분',
-        imageUrl: 'assets/images/course4.png',
-        isCompleted: false,
-      ),
-    ];
+    final List<CourseModel> allCourses = mockUserDevelopedCourses;
 
     final filteredCourses = allCourses.where((course) {
       if (filter == 0) return true;
@@ -50,7 +19,9 @@ class UserDevelopedTab extends StatelessWidget {
 
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      children: filteredCourses,
+      children: filteredCourses
+          .map((course) => CourseCard(course: course)) // ✅ 단일 파라미터 전달
+          .toList(),
     );
   }
 }

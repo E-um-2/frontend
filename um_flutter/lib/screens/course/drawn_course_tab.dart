@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../shared/widgets/course_card.dart';
+import '../../shared/screens/empty_course_screen.dart';
+import '../../models/course_model.dart';
+import '../../shared/data/mock_course_data.dart';
 
 class DrawnCourseTab extends StatelessWidget {
   final int filter;
@@ -7,40 +11,7 @@ class DrawnCourseTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final allCourses = const [
-      CourseCard(
-        title: '사람 옆모습',
-        location: '인천 청라 부근',
-        distance: '20km',
-        duration: '2시간 10분',
-        imageUrl: 'assets/images/course1.png',
-        isCompleted: true,
-      ),
-      CourseCard(
-        title: '네잎 클로버',
-        location: '인천 문학산 부근',
-        distance: '20km',
-        duration: '2시간 10분',
-        imageUrl: 'assets/images/course2.png',
-        isCompleted: false,
-      ),
-      CourseCard(
-        title: '사람 옆모습',
-        location: '인천 청라 부근',
-        distance: '20km',
-        duration: '2시간 10분',
-        imageUrl: 'assets/images/course3.png',
-        isCompleted: true,
-      ),
-      CourseCard(
-        title: '네잎 클로버',
-        location: '인천 문학산 부근',
-        distance: '20km',
-        duration: '2시간 10분',
-        imageUrl: 'assets/images/course4.png',
-        isCompleted: false,
-      ),
-    ];
+    final List<CourseModel> allCourses = mockDrawnCourses;
 
     final filteredCourses = allCourses.where((course) {
       if (filter == 0) return true;
@@ -48,9 +19,24 @@ class DrawnCourseTab extends StatelessWidget {
       return !course.isCompleted;
     }).toList();
 
+    if (filteredCourses.isEmpty) {
+      return EmptyState(
+        imagePath: 'assets/images/empty_draw.png',
+        description: '아직 제작된 코스가 없어요!',
+        subDescription: '원하는 코스를 그려봐요',
+        buttonLabel: '새로운 코스 그리기',
+        onPressed: () {
+          context.go('/home');
+        },
+        buttonColor: const Color(0xFF00A2FF),
+      );
+    }
+
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      children: filteredCourses,
+      children: filteredCourses
+          .map((course) => CourseCard(course: course))
+          .toList(),
     );
   }
 }

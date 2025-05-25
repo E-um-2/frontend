@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart'; // ✅ go() 사용 시 필요
+import '../../shared/data/course_challenge_data.dart';
 import '../../shared/widgets/course_card.dart';
+import '../../models/course_model.dart';
 
 class CourseChallengeTab extends StatelessWidget {
   final int filter;
@@ -7,40 +10,7 @@ class CourseChallengeTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final allCourses = const [
-      CourseCard(
-        title: '사람 옆모습',
-        location: '인천 청라 부근',
-        distance: '20km',
-        duration: '2시간 10분',
-        imageUrl: 'assets/images/course1.png',
-        isCompleted: true,
-      ),
-      CourseCard(
-        title: '사람 옆모습',
-        location: '인천 청라 부근',
-        distance: '20km',
-        duration: '2시간 10분',
-        imageUrl: 'assets/images/course2.png',
-        isCompleted: false,
-      ),
-      CourseCard(
-        title: '사람 옆모습',
-        location: '인천 청라 부근',
-        distance: '20km',
-        duration: '2시간 10분',
-        imageUrl: 'assets/images/course3.png',
-        isCompleted: true,
-      ),
-      CourseCard(
-        title: '사람 옆모습',
-        location: '인천 청라 부근',
-        distance: '20km',
-        duration: '2시간 10분',
-        imageUrl: 'assets/images/course4.png',
-        isCompleted: false,
-      ),
-    ];
+    final List<ChallengeCourseModel> allCourses = challengeCourseList;
 
     final filteredCourses = allCourses.where((course) {
       if (filter == 0) return true;
@@ -50,7 +20,17 @@ class CourseChallengeTab extends StatelessWidget {
 
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      children: filteredCourses,
+      children: filteredCourses
+          .map(
+            (challengeCourse) => GestureDetector(
+              onTap: () {
+                // ✅ 디테일 페이지로 이동
+                context.push('/challenge/${challengeCourse.id}');
+              },
+              child: CourseCard(challengeCourse: challengeCourse),
+            ),
+          )
+          .toList(),
     );
   }
 }

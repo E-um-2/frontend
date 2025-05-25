@@ -1,38 +1,36 @@
 import 'package:flutter/material.dart';
+import '../../models/course_model.dart';
 
 class CourseCard extends StatelessWidget {
-  final String title;
-  final String location;
-  final String distance;
-  final String duration;
-  final String imageUrl;
-  final bool isCompleted;
+  final CourseModel? course;
+  final ChallengeCourseModel? challengeCourse;
 
-  const CourseCard({
-    super.key,
-    required this.title,
-    required this.location,
-    required this.distance,
-    required this.duration,
-    required this.imageUrl,
-    required this.isCompleted,
-  });
+  const CourseCard({super.key, this.course, this.challengeCourse})
+    : assert(course != null || challengeCourse != null);
 
   Color _getCompletedColor(BuildContext context) {
-    // 현재 라우트 경로 기준으로 색 결정
     final route = ModalRoute.of(context)?.settings.name ?? '';
-
     if (route.contains('explore')) {
-      return const Color(0xFF38CCBE); // 둘러보기 색상
+      return const Color(0xFF38CCBE); // 둘러보기
     } else if (route.contains('course')) {
-      return const Color(0xFF00A2FF); // 내 코스 색상
+      return const Color(0xFF00A2FF); // 내 코스
     }
-    return Colors.green; // 기본값 또는 fallback
+    return Colors.green;
   }
 
   @override
   Widget build(BuildContext context) {
-    final completedColor = _getCompletedColor(context);
+    final isChallenge = challengeCourse != null;
+    final imageUrl = isChallenge ? challengeCourse!.imageUrl : course!.imageUrl;
+    final title = isChallenge ? challengeCourse!.title : course!.title;
+    final location = isChallenge ? challengeCourse!.location : course!.location;
+    final distance = isChallenge ? challengeCourse!.distance : course!.distance;
+    final duration = isChallenge ? challengeCourse!.duration : course!.duration;
+    final isCompleted = isChallenge
+        ? challengeCourse!.isCompleted
+        : course!.isCompleted;
+    final completedColor =
+        course?.completedColor ?? _getCompletedColor(context);
 
     return Column(
       children: [
@@ -90,6 +88,32 @@ class CourseCard extends StatelessWidget {
                             color: isCompleted ? completedColor : Colors.grey,
                           ),
                         ),
+                        if (!isChallenge && course?.likes != null) ...[
+                          const SizedBox(width: 12),
+                          const Icon(
+                            Icons.thumb_up_off_alt,
+                            size: 14,
+                            color: Colors.grey,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            "${course!.likes}",
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ],
+                        if (!isChallenge && course?.scraps != null) ...[
+                          const SizedBox(width: 8),
+                          const Icon(
+                            Icons.bookmark_outline,
+                            size: 14,
+                            color: Colors.grey,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            "${course!.scraps}",
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ],
                       ],
                     ),
                   ],

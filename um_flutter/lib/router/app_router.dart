@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:um_test/screens/explore/challenge_course_detail_screen.dart';
 
 import '../screens/home/home_screen.dart';
 import '../screens/course/course_screen.dart';
@@ -61,6 +62,13 @@ final GoRouter router = GoRouter(
         GoRoute(
           path: '/mypage',
           builder: (context, state) => const MyPageScreen(),
+        ),
+        GoRoute(
+          path: '/challenge/:id', // 🔹 :id 는 동적 파라미터
+          builder: (context, state) {
+            final id = state.pathParameters['id']!;
+            return ChallengeCourseDetailScreen(courseId: id);
+          },
         ),
       ],
     ),
