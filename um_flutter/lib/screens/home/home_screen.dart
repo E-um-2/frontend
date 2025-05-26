@@ -17,20 +17,17 @@ class _HomeScreenState extends State<HomeScreen> {
   LatLng? _currentPosition;
 
   Set<Marker> _bikeMarkers = {};
-  Set<Marker> _foodMarkers = {};
   Set<Marker> _landmarkMarkers = {};
   Set<Marker> _visibleMarkers = {};
 
-  bool _showFood = false;
   bool _showLandmarks = false;
-  bool _isMenuVisible = false;
+  bool _showBikeStations = true;
 
   @override
   void initState() {
     super.initState();
     _initLocation();
     _loadBikeStations();
-    _loadFoodMarkers();
     _loadLandmarkMarkers();
   }
 
@@ -69,7 +66,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (lat != null && lng != null) {
         loadedMarkers.add(
           Marker(
-            markerId: MarkerId(name ?? 'Unknown'),
+            markerId: MarkerId('bike_${name ?? 'Unknown'}'),
             position: LatLng(lat, lng),
             infoWindow: InfoWindow(title: name),
             icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueCyan),
@@ -80,34 +77,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
     setState(() {
       _bikeMarkers = loadedMarkers;
-      _updateVisibleMarkers();
     });
-  }
 
-  Future<void> _loadFoodMarkers() async {
-    final String jsonString = await rootBundle.loadString('assets/food_places.json');
-    final List<dynamic> data = json.decode(jsonString);
-
-    Set<Marker> food = {};
-
-    for (var item in data) {
-      final String? name = item['name'];
-      final double? lat = double.tryParse(item['latitude'].toString());
-      final double? lng = double.tryParse(item['longitude'].toString());
-
-      if (lat != null && lng != null) {
-        food.add(
-          Marker(
-            markerId: MarkerId("food_$name"),
-            position: LatLng(lat, lng),
-            infoWindow: InfoWindow(title: name),
-            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
-          ),
-        );
-      }
-    }
-
-    _foodMarkers = food;
+    _updateVisibleMarkers(); // 반드시 밖에서 호출!
   }
 
   Future<void> _loadLandmarkMarkers() async {
@@ -151,26 +123,21 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     }
 
-    _landmarkMarkers = landmarks;
-    _updateVisibleMarkers();
-  }
-
-  void _updateVisibleMarkers() {
     setState(() {
-      _visibleMarkers = {
-        ..._bikeMarkers,
-        if (_showFood) ..._foodMarkers,
-        if (_showLandmarks) ..._landmarkMarkers,
-      };
-    });
-  }
-
-  void _toggleFoodMarkers() {
-    setState(() {
-      _showFood = !_showFood;
+      _landmarkMarkers = landmarks;
       _updateVisibleMarkers();
     });
   }
+
+
+  void _updateVisibleMarkers() {
+    _visibleMarkers.clear();
+    if (_showBikeStations) _visibleMarkers.addAll(_bikeMarkers);
+    if (_showLandmarks) _visibleMarkers.addAll(_landmarkMarkers);
+    setState(() {});
+  }
+
+
 
   void _toggleLandmarkMarkers() {
     setState(() {
@@ -178,6 +145,24 @@ class _HomeScreenState extends State<HomeScreen> {
       _updateVisibleMarkers();
     });
   }
+
+  void _toggleBikeMarkers() {
+    if (_showBikeStations) {
+      setState(() {
+        _showBikeStations = false;
+      });
+      _updateVisibleMarkers(); // 반드시 상태 바뀐 후 호출
+    } else {
+      setState(() {
+        _showBikeStations = true;
+      });
+      _loadBikeStations(); // load 시 내부에서 updateVisibleMarkers 호출됨
+    }
+  }
+
+
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -197,58 +182,46 @@ class _HomeScreenState extends State<HomeScreen> {
               _controller.complete(controller);
             },
             markers: _visibleMarkers,
+            zoomControlsEnabled: false,
+            mapToolbarEnabled: false,
           ),
-          if (_isMenuVisible)
-            Positioned(
-              top: 80,
-              right: 16,
-              child: Column(
-                children: [
-                  ElevatedButton(
-                    onPressed: _toggleFoodMarkers,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _showFood ? Colors.orange : Colors.grey,
-                    ),
-                    child: const Text("맛집"),
-                  ),
-                  const SizedBox(height: 8),
-                  ElevatedButton(
-                    onPressed: _toggleLandmarkMarkers,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _showLandmarks ? Colors.green : Colors.grey,
-                    ),
-                    child: const Text("관광지"),
-                  ),
-                ],
-              ),
-            ),
           Positioned(
             right: 16,
             bottom: 140,
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 FloatingActionButton(
-                  heroTag: 'robot',
+                  heroTag: 'toggleBike',
+                  mini: true,
                   backgroundColor: Colors.white,
-                  onPressed: () {
-                    setState(() {
-                      _isMenuVisible = !_isMenuVisible;
-                    });
-                  },
-                  child: Image.asset('assets/images/robot_icon.png', width: 24),
+                  onPressed: _toggleBikeMarkers,
+                  shape: const CircleBorder(),
+                  child: const Icon(Icons.directions_bike, color: Colors.blue),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 8),
                 FloatingActionButton(
-                  heroTag: 'location',
+                  heroTag: 'toggleLandmark',
+                  mini: true,
+                  backgroundColor: Colors.white,
+                  onPressed: _toggleLandmarkMarkers,
+                  shape: const CircleBorder(),
+                  child: const Icon(Icons.account_balance, color: Colors.green),
+                ),
+                const SizedBox(height: 8),
+                FloatingActionButton(
+                  heroTag: 'locationButton',
+                  mini: true,
                   backgroundColor: Colors.white,
                   onPressed: () async {
                     final location = await Location().getLocation();
-                    final GoogleMapController controller = await _controller.future;
+                    final controller = await _controller.future;
                     controller.animateCamera(CameraUpdate.newLatLng(
                       LatLng(location.latitude!, location.longitude!),
                     ));
                   },
+                  shape: const CircleBorder(),
                   child: const Icon(Icons.my_location, color: Colors.blue),
                 ),
               ],
@@ -265,10 +238,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue,
-                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
+                  minimumSize: const Size(260, 48),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
-                child: const Text("코스 그리기", style: TextStyle(fontSize: 16)),
+                child: const Text("코스 그리기", style: TextStyle(fontSize: 16, color: Colors.white)),
               ),
             ),
           ),
