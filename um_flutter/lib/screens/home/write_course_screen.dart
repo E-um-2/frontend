@@ -117,7 +117,7 @@ void _showCourseInfoBottomSheet(BuildContext context, List<LatLng> pathPoints) {
               padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 14),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
-            child: const Text("코스 정보 입력하기"),
+            child: const Text("내 코스로 이동"),
           ),
         ],
       ),
