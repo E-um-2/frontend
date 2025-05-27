@@ -1,6 +1,8 @@
-// 주행하기 시연용 전체 코드
+// 주행하기 시연용 전체 코드 (마커 표시 포함)
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart';
 
@@ -13,6 +15,7 @@ class DrivingScreen extends StatefulWidget {
 
 class _DrivingScreenState extends State<DrivingScreen> {
   final Completer<GoogleMapController> _controller = Completer();
+  late GoogleMapController _mapController;
 
   final List<LatLng> _routePolyline = [
     LatLng(37.376146, 126.637759),
@@ -33,10 +36,15 @@ class _DrivingScreenState extends State<DrivingScreen> {
 
   bool _showBikeStations = true;
   bool _showLandmarks = false;
+  bool _isCameraLocked = true;
+
+  Set<Marker> _bikeMarkers = {};
+  Set<Marker> _landmarkMarkers = {};
+  Set<Marker> _visibleMarkers = {};
 
   Set<Polyline> get _polylines {
     final lines = <Polyline>{};
-    if (_isRiding || !_isRiding && _userPath.isNotEmpty) {
+    if (_isRiding || (!_isRiding && _userPath.isNotEmpty)) {
       lines.add(
         Polyline(
           polylineId: const PolylineId('userPath'),
@@ -63,6 +71,8 @@ class _DrivingScreenState extends State<DrivingScreen> {
   void initState() {
     super.initState();
     _initLocation();
+    _loadBikeStations();
+    _loadLandmarkMarkers();
   }
 
   Future<void> _initLocation() async {
@@ -77,6 +87,7 @@ class _DrivingScreenState extends State<DrivingScreen> {
       _isRiding = true;
       _userPath.clear();
       _elapsedSeconds = 0;
+      _isCameraLocked = true;
     });
 
     _locationSubscription = _location.onLocationChanged.listen((loc) {
@@ -85,9 +96,9 @@ class _DrivingScreenState extends State<DrivingScreen> {
         _userPath.add(point);
         _currentPosition = point;
       });
-      _controller.future.then((c) {
-        c.animateCamera(CameraUpdate.newLatLng(point));
-      });
+      if (_isCameraLocked) {
+        _mapController.animateCamera(CameraUpdate.newLatLng(point));
+      }
     });
 
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -111,11 +122,93 @@ class _DrivingScreenState extends State<DrivingScreen> {
   }
 
   void _toggleBikeMarkers() {
-    setState(() => _showBikeStations = !_showBikeStations);
+    setState(() {
+      _showBikeStations = !_showBikeStations;
+      _updateVisibleMarkers();
+    });
   }
 
   void _toggleLandmarkMarkers() {
-    setState(() => _showLandmarks = !_showLandmarks);
+    setState(() {
+      _showLandmarks = !_showLandmarks;
+      _updateVisibleMarkers();
+    });
+  }
+
+  void _updateVisibleMarkers() {
+    setState(() {
+      _visibleMarkers.clear();
+      if (_showBikeStations) _visibleMarkers.addAll(_bikeMarkers);
+      if (_showLandmarks) _visibleMarkers.addAll(_landmarkMarkers);
+    });
+  }
+
+  Future<void> _loadBikeStations() async {
+    try {
+      final String jsonString = await rootBundle.loadString('assets/bike_stations.json');
+      final List<dynamic> data = json.decode(jsonString);
+      Set<Marker> loadedMarkers = {};
+
+      for (var item in data) {
+        final String? name = item['name'];
+        final double? lat = item['latitude'] is double ? item['latitude'] : double.tryParse(item['latitude'].toString());
+        final double? lng = item['longitude'] is double ? item['longitude'] : double.tryParse(item['longitude'].toString());
+
+        if (lat != null && lng != null && name != null) {
+          loadedMarkers.add(
+            Marker(
+              markerId: MarkerId("bike_${name}_${lat}_$lng"),
+              position: LatLng(lat, lng),
+              infoWindow: InfoWindow(title: name),
+              icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueCyan),
+            ),
+          );
+        }
+      }
+
+      _bikeMarkers = loadedMarkers;
+      _updateVisibleMarkers();
+    } catch (e) {
+      debugPrint('자전거 거치소 로딩 중 오류: $e');
+    }
+  }
+
+  Future<void> _loadLandmarkMarkers() async {
+    try {
+      final String jsonString = await rootBundle.loadString('assets/landmarks.json');
+      final List<dynamic> data = json.decode(jsonString);
+      Set<Marker> landmarks = {};
+
+      for (var item in data) {
+        final String? name = item['name'];
+        final String? description = item['description'];
+        final double? lat = item['latitude'] is double ? item['latitude'] : double.tryParse(item['latitude'].toString());
+        final double? lng = item['longitude'] is double ? item['longitude'] : double.tryParse(item['longitude'].toString());
+
+        if (lat != null && lng != null) {
+          final snippetText = (description != null && description.isNotEmpty)
+              ? (description.length > 20 ? '${description.substring(0, 30)}...' : description)
+              : '';
+
+          landmarks.add(
+            Marker(
+              markerId: MarkerId("landmark_${lat}_$lng"),
+              position: LatLng(lat, lng),
+              infoWindow: InfoWindow(
+                title: name,
+                snippet: snippetText,
+              ),
+              icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+            ),
+          );
+        }
+      }
+
+      _landmarkMarkers = landmarks;
+      _updateVisibleMarkers();
+    } catch (e) {
+      debugPrint('랜드마크 로딩 중 오류: $e');
+    }
   }
 
   Future<void> _goToCurrentLocation() async {
@@ -149,8 +242,15 @@ class _DrivingScreenState extends State<DrivingScreen> {
               target: _currentPosition!,
               zoom: 16,
             ),
-            onMapCreated: (c) => _controller.complete(c),
+            onMapCreated: (controller) {
+              _controller.complete(controller);
+              _mapController = controller;
+            },
+            onCameraMoveStarted: () {
+              _isCameraLocked = false;
+            },
             polylines: _polylines,
+            markers: _visibleMarkers,
             myLocationEnabled: true,
             myLocationButtonEnabled: false,
           ),
