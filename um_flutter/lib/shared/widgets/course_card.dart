@@ -21,8 +21,9 @@ class CourseCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isChallenge = challengeCourse != null;
-    final imageUrl = isChallenge ? challengeCourse!.imageUrl : course!.imageUrl;
+    final isUserCourse = course is UserDevelopedCourseModel;
 
+    final imageUrl = isChallenge ? challengeCourse!.imageUrl : course!.imageUrl;
     final title = isChallenge
         ? 'Level ${challengeCourse!.id.replaceAll(RegExp(r'[^0-9]'), '')}. ${challengeCourse!.title}'
         : course!.title;
@@ -91,7 +92,9 @@ class CourseCard extends StatelessWidget {
                             color: isCompleted ? completedColor : Colors.grey,
                           ),
                         ),
-                        if (!isChallenge && course?.likes != null) ...[
+
+                        // 🔹 사용자 개발 코스일 경우 추천/스크랩 표시
+                        if (!isChallenge && isUserCourse) ...[
                           const SizedBox(width: 12),
                           const Icon(
                             Icons.thumb_up_off_alt,
@@ -100,11 +103,9 @@ class CourseCard extends StatelessWidget {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            "${course!.likes}",
+                            "${(course as UserDevelopedCourseModel).likes}",
                             style: const TextStyle(fontSize: 12),
                           ),
-                        ],
-                        if (!isChallenge && course?.scraps != null) ...[
                           const SizedBox(width: 8),
                           const Icon(
                             Icons.bookmark_outline,
@@ -113,7 +114,7 @@ class CourseCard extends StatelessWidget {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            "${course!.scraps}",
+                            "${(course as UserDevelopedCourseModel).scraps}",
                             style: const TextStyle(fontSize: 12),
                           ),
                         ],
