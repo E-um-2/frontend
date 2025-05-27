@@ -34,7 +34,6 @@ class _HomeScreenState extends State<HomeScreen> {
       }
       _loadBikeStations();
       _loadLandmarkMarkers();
-
   }
 
   Future<void> _initLocation() async {
