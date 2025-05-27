@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:um_test/screens/explore/challenge_course_detail_screen.dart';
+import 'package:um_test/screens/explore/user_developred_course_detail_screen.dart';
+import 'package:um_test/shared/data/mock_course_data.dart';
+import 'package:um_test/shared/screens/driving_screen.dart';
 
 import '../screens/home/home_screen.dart';
 import '../screens/course/course_screen.dart';
@@ -63,14 +66,25 @@ final GoRouter router = GoRouter(
           path: '/mypage',
           builder: (context, state) => const MyPageScreen(),
         ),
-        GoRoute(
-          path: '/challenge/:id', // 🔹 :id 는 동적 파라미터
-          builder: (context, state) {
-            final id = state.pathParameters['id']!;
-            return ChallengeCourseDetailScreen(courseId: id);
-          },
-        ),
       ],
+    ),
+    GoRoute(
+      path: '/driving',
+      builder: (context, state) => const DrivingScreen(),
+    ),
+    GoRoute(
+      path: '/challenge/:id', // 🔹 :id 는 동적 파라미터
+      builder: (context, state) {
+        final id = state.pathParameters['id']!;
+        return ChallengeCourseDetailScreen(courseId: id);
+      },
+    ),
+    GoRoute(
+      path: '/user-course/:id',
+      builder: (context, state) {
+        final id = state.pathParameters['id']!;
+        return UserCourseDetailScreen(courseId: id); // 이제 오류 안 남
+      },
     ),
   ],
 );

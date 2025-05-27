@@ -118,7 +118,7 @@ class _CourseScreenState extends State<CourseScreen> {
           },
         ),
 
-        const SizedBox(width: 1), // 👈 추가로 좁힐 수도 있어요
+        const SizedBox(width: 1),
         Text(label, style: TextStyle(fontSize: 14, color: Color(0xFF999999))),
       ],
     );
