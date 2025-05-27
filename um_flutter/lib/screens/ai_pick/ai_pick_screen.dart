@@ -2,9 +2,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:um_test/screens/ai_pick/ai_map_screen.dart';
 
-
+import 'ai_placelist_screen.dart'; // 별도 파일로 분리된 장소 리스트 화면
 
 List<String> extractPlaces(String aiReply) {
   final lines = aiReply.split('\n');
@@ -13,7 +12,7 @@ List<String> extractPlaces(String aiReply) {
   for (var line in lines) {
     var text = line.trim();
 
-    // 🔥 모든 이모지 및 깨진 문자 제거
+    // 모든 이모지 및 깨진 문자 제거
     text = text.replaceAll(
       RegExp(
         r'[\u{1F300}-\u{1F6FF}]|'   // Symbols & pictographs
@@ -31,7 +30,7 @@ List<String> extractPlaces(String aiReply) {
       continue;
     }
 
-    // 접미사 제거
+    // 접미사 제거 (자전거 관련 단어)
     text = text.replaceAll(RegExp(r'(자전거\s*)?(도로|코스|길|경로)$'), '').trim();
 
     if (text.isNotEmpty && text.length <= 20) {
@@ -41,8 +40,6 @@ List<String> extractPlaces(String aiReply) {
 
   return places.toSet().toList();
 }
-
-
 
 class AiChatScreen extends StatefulWidget {
   const AiChatScreen({super.key});
@@ -64,11 +61,9 @@ class _AiChatScreenState extends State<AiChatScreen> {
       orElse: () => ChatMessage(sender: 'user', text: ''),
     );
 
-
     final processedInput = (!rawInput.contains("인천") && lastIncheon.text.isNotEmpty)
         ? "이전 인천 관련 대화의 연장 질문입니다. 인천 관련해서 더 추천해줘: $rawInput"
         : rawInput;
-
 
     setState(() {
       _messages.add(ChatMessage(sender: 'user', text: rawInput));
@@ -85,8 +80,6 @@ class _AiChatScreenState extends State<AiChatScreen> {
     });
   }
 
-
-
   Future<String> getOpenRouterReply(String input) async {
     final apiKey = dotenv.env['OPENROUTER_API_KEY'];
     if (apiKey == null || apiKey.isEmpty) {
@@ -98,7 +91,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
     final headers = {
       'Authorization': 'Bearer $apiKey',
       'Content-Type': 'application/json',
-      'HTTP-Referer': 'http://localhost', // 또는 실제 배포 도메인
+      'HTTP-Referer': 'http://localhost',
       'X-Title': 'um_flutter_gpt_app'
     };
 
@@ -122,8 +115,6 @@ class _AiChatScreenState extends State<AiChatScreen> {
           - 각 추천 장소는 제목 + 설명 형식으로 작성하세요.
           - 🚲 📍 🌊 같은 이모지를 적절히 활용하세요.
           '''
-
-
         },
         ..._messages.map((m) => {
               'role': m.sender == 'user' ? 'user' : 'assistant',
@@ -132,7 +123,6 @@ class _AiChatScreenState extends State<AiChatScreen> {
         {'role': 'user', 'content': input}
       ]
     });
-
 
     try {
       final response = await http.post(url, headers: headers, body: body);
@@ -182,47 +172,42 @@ class _AiChatScreenState extends State<AiChatScreen> {
               padding: EdgeInsets.all(8.0),
               child: CircularProgressIndicator(),
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4),
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  // AI 응답 중 가장 마지막 메시지를 찾되, 없으면 기본값
-                  final aiReply = _messages.lastWhere(
-                    (m) => m.sender == 'ai',
-                    orElse: () => ChatMessage(sender: 'ai', text: ''),
-                  ).text;
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4),
+            child: ElevatedButton.icon(
+              onPressed: () {
+                final aiReply = _messages.lastWhere(
+                  (m) => m.sender == 'ai',
+                  orElse: () => ChatMessage(sender: 'ai', text: ''),
+                ).text;
 
-                  // 장소 추출
-                  final extractedPlaces = extractPlaces(aiReply);
+                final extractedPlaces = extractPlaces(aiReply);
 
-                  // 아무 장소도 없으면 안내하고 리턴
-                  if (extractedPlaces.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("📭 AI가 추천한 장소가 없습니다.\n먼저 질문을 해주세요!")),
-                    );
-                    return;
-                  }
-
-                  // 장소가 있을 경우만 지도 화면으로 이동
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => AiMapScreen(places: extractedPlaces),
-                    ),
+                if (extractedPlaces.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("📭 AI가 추천한 장소가 없습니다.\n먼저 질문을 해주세요!")),
                   );
-                },
+                  return;
+                }
 
-
-                icon: const Icon(Icons.map),
-                label: const Text("📍 지도에서 추천 코스 보기"),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green[600],
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => AiPlaceListScreen(places: extractedPlaces),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.map),
+              label: const Text("📍 지도에서 추천 코스 보기"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green[600],
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                shape:
+                    RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
             ),
+          ),
           const Divider(height: 1),
           Padding(
             padding: const EdgeInsets.all(8.0),

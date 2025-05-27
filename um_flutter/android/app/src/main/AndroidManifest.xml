@@ -7,7 +7,7 @@
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <meta-data android:name="com.google.android.geo.API_KEY"
-                   android:value="구글 맵 api 넣어야해요"/>
+                   android:value="구글 맵 api넣어야해요"/>
         <activity
             android:name=".MainActivity"
             android:exported="true"
