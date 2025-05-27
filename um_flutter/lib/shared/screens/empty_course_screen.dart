@@ -21,36 +21,34 @@ class EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Image.asset(imagePath, width: 140, height: 140),
-            const SizedBox(height: 24),
-            Text(
-              description,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF666666),
-              ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 36.0),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Image.asset(imagePath, width: 280, height: 300),
+          Text(
+            description,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF666666),
             ),
-            const SizedBox(height: 4),
-            Text(
-              subDescription,
-              style: const TextStyle(fontSize: 14, color: Color(0xFF999999)),
-            ),
-            const SizedBox(height: 24),
-            CommonButton(
-              text: buttonLabel,
-              color: buttonColor,
-              onPressed: onPressed,
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            subDescription,
+            style: const TextStyle(fontSize: 14, color: Color(0xFF999999)),
+          ),
+          const SizedBox(height: 24),
+          CommonButton(
+            text: buttonLabel,
+            color: buttonColor,
+            onPressed: onPressed,
+          ),
+          const Spacer(), // 🔽 아래를 밀어주는 역할
+        ],
       ),
     );
   }

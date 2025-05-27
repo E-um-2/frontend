@@ -3,7 +3,7 @@ import '../../models/course_model.dart';
 const List<ChallengeCourseModel> challengeCourseList = [
   ChallengeCourseModel(
     id: 'c1',
-    title: 'Level 1. 정사각형의 미학',
+    title: '정사각형의 미학',
     location: '서울 잠실 종합운동장',
     distance: '35km',
     duration: '5시간 20분',
@@ -15,19 +15,20 @@ const List<ChallengeCourseModel> challengeCourseList = [
   ),
   ChallengeCourseModel(
     id: 'c2',
-    title: 'Level 2. 강아지 모양',
+    title: '강아지 모양',
     location: '송도 인천대학교 부근',
     distance: '48km',
     duration: '8시간 30분',
     imageUrl: 'assets/images/challenge_course2.png',
     isCompleted: false,
     eumPoint: 100,
-    description: '인천에 나타난 강아지예요\n푸들? 말티즈? 당신이 생각하는 그대로예요',
+    description:
+        '인천에 나타난 강아지예요\n푸들? 말티즈? 당신이 생각하는 그대로예요ㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇ',
     challengers: 23,
   ),
   ChallengeCourseModel(
     id: 'c3',
-    title: 'Level 3. 한강 뱀길',
+    title: '한강 뱀길',
     location: '서울 망원 한강공원',
     distance: '60km',
     duration: '7시간 10분',
@@ -39,7 +40,7 @@ const List<ChallengeCourseModel> challengeCourseList = [
   ),
   ChallengeCourseModel(
     id: 'c4',
-    title: 'Level 4. 도시 속 하트',
+    title: '도시 속 하트',
     location: '서울 광화문 부근',
     distance: '42km',
     duration: '6시간 40분',
@@ -51,7 +52,7 @@ const List<ChallengeCourseModel> challengeCourseList = [
   ),
   ChallengeCourseModel(
     id: 'c5',
-    title: 'Level 5. 자유의 형상',
+    title: '자유의 형상',
     location: '부산 광안리 해변 부근',
     distance: '55km',
     duration: '7시간 45분',

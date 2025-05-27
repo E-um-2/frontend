@@ -3,7 +3,6 @@
 import 'package:flutter/material.dart';
 import '../../models/course_model.dart';
 
-// ✅ 사용자 개발 코스 (3개)
 final List<CourseModel> mockUserDevelopedCourses = [
   CourseModel(
     id: 'u1',
@@ -18,6 +17,8 @@ final List<CourseModel> mockUserDevelopedCourses = [
     scraps: 10,
     reports: 0,
     isUploadedByUser: true,
+    description:
+        '언덕이 높은 곳이 좀 있긴 한데 할만한 코스예요!ㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇddddddddddddddddㅇdㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇ',
   ),
   CourseModel(
     id: 'u2',
@@ -32,6 +33,7 @@ final List<CourseModel> mockUserDevelopedCourses = [
     scraps: 6,
     reports: 1,
     isUploadedByUser: true,
+    description: '정확한 사각형 회전을 유지하며 타보세요!',
   ),
   CourseModel(
     id: 'u3',
@@ -46,14 +48,11 @@ final List<CourseModel> mockUserDevelopedCourses = [
     scraps: 7,
     reports: 0,
     isUploadedByUser: true,
+    description: '강아지 옆모습처럼 귀여운 경로예요!',
   ),
 ];
 
-// ✅ 내가 그린 코스 (0개, 틀만 존재)
-final List<CourseModel> mockDrawnCourses = [];
-
-// ✅ 저장된 코스 (2개)
-final List<CourseModel> mocksavedCourses = [
+final List<CourseModel> mockDrawnCourses = [
   CourseModel(
     id: 's1',
     title: '사람 옆모습',
@@ -67,6 +66,7 @@ final List<CourseModel> mocksavedCourses = [
     scraps: 5,
     reports: 0,
     isUploadedByUser: false,
+    description: '테스트 주행 후 업로드할 예정입니다.',
   ),
   CourseModel(
     id: 's2',
@@ -81,5 +81,9 @@ final List<CourseModel> mocksavedCourses = [
     scraps: 3,
     reports: 0,
     isUploadedByUser: false,
+    description: '정사각형 모양을 만들기 위해 여러 번 그렸어요!',
   ),
 ];
+
+// ✅ 저장된 코스 (2개)
+final List<CourseModel> mocksavedCourses = [];

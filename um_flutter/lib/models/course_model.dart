@@ -11,6 +11,7 @@ class CourseModel {
   final String imageUrl;
   final bool isCompleted;
   final Color? completedColor;
+  final String description;
 
   // 사용자 개발 코스에서 쓰이는 요소
   final int? likes;
@@ -26,6 +27,7 @@ class CourseModel {
     required this.duration,
     required this.imageUrl,
     required this.isCompleted,
+    required this.description,
     this.completedColor,
     this.likes,
     this.scraps,

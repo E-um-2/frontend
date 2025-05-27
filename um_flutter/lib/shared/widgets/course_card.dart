@@ -22,7 +22,10 @@ class CourseCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isChallenge = challengeCourse != null;
     final imageUrl = isChallenge ? challengeCourse!.imageUrl : course!.imageUrl;
-    final title = isChallenge ? challengeCourse!.title : course!.title;
+
+    final title = isChallenge
+        ? 'Level ${challengeCourse!.id.replaceAll(RegExp(r'[^0-9]'), '')}. ${challengeCourse!.title}'
+        : course!.title;
     final location = isChallenge ? challengeCourse!.location : course!.location;
     final distance = isChallenge ? challengeCourse!.distance : course!.distance;
     final duration = isChallenge ? challengeCourse!.duration : course!.duration;
