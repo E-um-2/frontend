@@ -1,120 +1,263 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:um_test/screens/ai_pick/ai_map_screen.dart';
 
-class AiRecommendationScreen extends StatelessWidget {
-  const AiRecommendationScreen({super.key});
+
+
+List<String> extractPlaces(String aiReply) {
+  final lines = aiReply.split('\n');
+  final List<String> places = [];
+
+  for (var line in lines) {
+    var text = line.trim();
+
+    // 🔥 모든 이모지 및 깨진 문자 제거
+    text = text.replaceAll(
+      RegExp(
+        r'[\u{1F300}-\u{1F6FF}]|'   // Symbols & pictographs
+        r'[\u{1F900}-\u{1F9FF}]|'   // Supplemental symbols
+        r'[\u{2600}-\u{26FF}]|'     // Misc symbols
+        r'[\u{2700}-\u{27BF}]|'     // Dingbats
+        r'[^\u0000-\u007F\uAC00-\uD7A3\s]', // 비 ASCII, 비 한글 제거
+        unicode: true,
+      ),
+      '',
+    );
+
+    // 설명 제거
+    if (text.contains("추천") || text.contains("즐기세요") || text.contains("소개") || text.length < 2) {
+      continue;
+    }
+
+    // 접미사 제거
+    text = text.replaceAll(RegExp(r'(자전거\s*)?(도로|코스|길|경로)$'), '').trim();
+
+    if (text.isNotEmpty && text.length <= 20) {
+      places.add(text);
+    }
+  }
+
+  return places.toSet().toList();
+}
+
+
+
+class AiChatScreen extends StatefulWidget {
+  const AiChatScreen({super.key});
+
+  @override
+  State<AiChatScreen> createState() => _AiChatScreenState();
+}
+
+class _AiChatScreenState extends State<AiChatScreen> {
+  final TextEditingController _controller = TextEditingController();
+  final List<ChatMessage> _messages = [];
+  bool _isLoading = false;
+
+  void _handleSend() async {
+    final rawInput = _controller.text.trim();
+
+    final lastIncheon = _messages.reversed.firstWhere(
+      (m) => m.sender == 'user' && m.text.contains("인천"),
+      orElse: () => ChatMessage(sender: 'user', text: ''),
+    );
+
+
+    final processedInput = (!rawInput.contains("인천") && lastIncheon.text.isNotEmpty)
+        ? "이전 인천 관련 대화의 연장 질문입니다. 인천 관련해서 더 추천해줘: $rawInput"
+        : rawInput;
+
+
+    setState(() {
+      _messages.add(ChatMessage(sender: 'user', text: rawInput));
+      _isLoading = true;
+    });
+
+    _controller.clear();
+
+    final reply = await getOpenRouterReply(processedInput);
+
+    setState(() {
+      _messages.add(ChatMessage(sender: 'ai', text: reply));
+      _isLoading = false;
+    });
+  }
+
+
+
+  Future<String> getOpenRouterReply(String input) async {
+    final apiKey = dotenv.env['OPENROUTER_API_KEY'];
+    if (apiKey == null || apiKey.isEmpty) {
+      return '❗ OpenRouter API 키가 설정되지 않았습니다.';
+    }
+
+    final url = Uri.parse('https://openrouter.ai/api/v1/chat/completions');
+
+    final headers = {
+      'Authorization': 'Bearer $apiKey',
+      'Content-Type': 'application/json',
+      'HTTP-Referer': 'http://localhost', // 또는 실제 배포 도메인
+      'X-Title': 'um_flutter_gpt_app'
+    };
+
+    final body = jsonEncode({
+      'model': 'openai/gpt-3.5-turbo',
+      'messages': [
+        {
+          'role': 'system',
+          'content': '''
+          당신은 인천 지역 여행만 전문으로 추천하는 AI입니다.
+
+          💡 [응답 원칙]
+          - 사용자가 어떤 질문을 하더라도, 그 질문이 인천과 연결될 수 있다면 인천 관련해서 답변하세요.
+          - 예를 들어 "더 추천해줘", "어디가 좋아?" 같은 모호한 질문은 직전 대화 흐름을 고려해서 인천에 맞춰 응답하세요.
+          - 사용자의 질문이 명확히 인천과 관련 있거나, "인천대", "송도", "월미도", "계양" 등 인천에 위치한 장소라면 모두 인천 관련 질문으로 간주하세요.
+          - 질문이 모호하더라도 문맥상 인천에 대한 추가 질문일 경우에는 자연스럽게 이어서 답변하세요.
+          - 단, "서울", "부산", "제주" 등 인천 외 지역이 명확히 언급되면 "죄송합니다, 인천 지역 여행만 도와드릴 수 있습니다."라고 답변하세요.
+
+          📝 [답변 형식]
+          - 줄바꿈(\\n)을 활용해 보기 좋게 단락을 나누세요.
+          - 각 추천 장소는 제목 + 설명 형식으로 작성하세요.
+          - 🚲 📍 🌊 같은 이모지를 적절히 활용하세요.
+          '''
+
+
+        },
+        ..._messages.map((m) => {
+              'role': m.sender == 'user' ? 'user' : 'assistant',
+              'content': m.text,
+            }),
+        {'role': 'user', 'content': input}
+      ]
+    });
+
+
+    try {
+      final response = await http.post(url, headers: headers, body: body);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['choices'][0]['message']['content'].trim();
+      } else {
+        final data = jsonDecode(response.body);
+        return '❗ 오류: ${data['error']?['message'] ?? '응답 실패'}';
+      }
+    } catch (e) {
+      return '🚨 네트워크 오류: $e';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: const Text(
-          'AI 추천',
-          style: TextStyle(color: Colors.black),
-        ),
-        centerTitle: true,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              '혹시 인천에 자전거 타기 좋은 경로 추천해줄래?\n데이트 할거야',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              '인천에서 자전거 데이트를 즐기기에 좋은 코스를 추천드릴게요. 아름다운 풍경과 함께 여유로운 시간을 보낼 수 있는 곳들입니다.',
-              style: TextStyle(fontSize: 14),
-            ),
-            const SizedBox(height: 16),
-            _buildCourse(
-              number: '1.',
-              title: '커넬웨이 수변공원 (청라)',
-              description:
-                  '청라호수공원에서 시작되는 인공수로를 따라 조성된 산책로와 자전거도로가 이어지는 코스로, 주변에 카페와 식당이 있어 데이트 코스로 안성맞춤입니다.',
-              images: ['assets/images/img1.png', 'assets/images/img2.png'],
-            ),
-            _buildCourse(
-              number: '2.',
-              title: '인천대공원 -> 소래포구 -> 송도 달빛축제공원 코스',
-              description:
-                  '약 20km의 코스로, 인천대공원에서 출발해 송산 자전거도로를 따라 소래포구를 지나 송도 달빛축제공원까지 이어집니다. 탄탄한 도로 상태와 풍경이 매력적이며, 중간중간 쉬어갈 수 있는 명소와 먹거리가 많아 추천드립니다.',
-              images: [],
-            ),
-            _buildCourse(
-              number: '3.',
-              title: '카페를 곁들인 산책 터널',
-              description:
-                  '카페와 체험 공간이 함께 있는 산책로와 연결된 터널에서 즐길 수 있는 코스로, 오랜만에 색다른 분위기 속에 자전거를 타며 데이트 하기 좋은 장소입니다. 위치는 송도 인근에 추천드립니다.',
-              images: [],
-            ),
-            const Spacer(),
-            TextField(
-              decoration: InputDecoration(
-                hintText: '무엇이든 물어보세요!',
-                prefixIcon: const Icon(Icons.chat_bubble_outline),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(30),
-                ),
-              ),
-            )
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCourse({
-    required String number,
-    required String title,
-    required String description,
-    List<String> images = const [],
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      appBar: AppBar(title: const Text('OpenRouter 여행 추천')),
+      body: Column(
         children: [
-          Row(
-            children: [
-              Text(
-                number,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: _messages.length,
+              itemBuilder: (context, index) {
+                final msg = _messages[index];
+                final isUser = msg.sender == 'user';
+                return Align(
+                  alignment:
+                      isUser ? Alignment.centerRight : Alignment.centerLeft,
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(vertical: 4),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: isUser ? Colors.blue[100] : Colors.grey[200],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(msg.text),
+                  ),
+                );
+              },
+            ),
+          ),
+          if (_isLoading)
+            const Padding(
+              padding: EdgeInsets.all(8.0),
+              child: CircularProgressIndicator(),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4),
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  // AI 응답 중 가장 마지막 메시지를 찾되, 없으면 기본값
+                  final aiReply = _messages.lastWhere(
+                    (m) => m.sender == 'ai',
+                    orElse: () => ChatMessage(sender: 'ai', text: ''),
+                  ).text;
+
+                  // 장소 추출
+                  final extractedPlaces = extractPlaces(aiReply);
+
+                  // 아무 장소도 없으면 안내하고 리턴
+                  if (extractedPlaces.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("📭 AI가 추천한 장소가 없습니다.\n먼저 질문을 해주세요!")),
+                    );
+                    return;
+                  }
+
+                  // 장소가 있을 경우만 지도 화면으로 이동
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => AiMapScreen(places: extractedPlaces),
+                    ),
+                  );
+                },
+
+
+                icon: const Icon(Icons.map),
+                label: const Text("📍 지도에서 추천 코스 보기"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green[600],
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            description,
-            style: const TextStyle(fontSize: 14),
-          ),
-          const SizedBox(height: 8),
-          if (images.isNotEmpty)
-            SizedBox(
-              height: 80,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: images.length,
-                itemBuilder: (context, index) => ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.asset(images[index], width: 100, fit: BoxFit.cover),
+            ),
+          const Divider(height: 1),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    onSubmitted: (_) => _handleSend(),
+                    decoration: InputDecoration(
+                      hintText: '여행 관련 질문을 해보세요!',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      prefixIcon: const Icon(Icons.chat_bubble_outline),
+                    ),
+                  ),
                 ),
-                separatorBuilder: (_, __) => const SizedBox(width: 8),
-              ),
-            )
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(Icons.send),
+                  onPressed: _handleSend,
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
+}
+
+class ChatMessage {
+  final String sender;
+  final String text;
+
+  ChatMessage({required this.sender, required this.text});
 }

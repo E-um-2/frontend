@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -20,30 +21,38 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _initLocation();
-    _loadBikeStations();
+     if (Platform.isAndroid || Platform.isIOS) {
+        _initLocation(); // ✅ 모바일에서만 위치 초기화
+      }
+      _loadBikeStations();
   }
 
   Future<void> _initLocation() async {
-    Location location = Location();
+    try {
+      Location location = Location();
 
-    bool serviceEnabled = await location.serviceEnabled();
-    if (!serviceEnabled) {
-      serviceEnabled = await location.requestService();
-      if (!serviceEnabled) return;
+      bool serviceEnabled = await location.serviceEnabled();
+      if (!serviceEnabled) {
+        serviceEnabled = await location.requestService();
+        if (!serviceEnabled) return;
+      }
+
+      PermissionStatus permissionGranted = await location.hasPermission();
+      if (permissionGranted == PermissionStatus.denied) {
+        permissionGranted = await location.requestPermission();
+        if (permissionGranted != PermissionStatus.granted) return;
+      }
+
+      final currentLocation = await location.getLocation();
+      setState(() {
+        _currentPosition = LatLng(currentLocation.latitude!, currentLocation.longitude!);
+      });
+    } catch (e) {
+      // ✅ Windows 등에서 예외 발생 시 무시
+      print('🚫 위치 권한 초기화 실패: $e');
     }
-
-    PermissionStatus permissionGranted = await location.hasPermission();
-    if (permissionGranted == PermissionStatus.denied) {
-      permissionGranted = await location.requestPermission();
-      if (permissionGranted != PermissionStatus.granted) return;
-    }
-
-    final currentLocation = await location.getLocation();
-    setState(() {
-      _currentPosition = LatLng(currentLocation.latitude!, currentLocation.longitude!);
-    });
   }
+
 
   Future<void> _loadBikeStations() async {
     final String jsonString = await rootBundle.loadString('assets/bike_stations.json');
