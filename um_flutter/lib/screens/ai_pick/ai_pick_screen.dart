@@ -141,6 +141,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+
       appBar: AppBar(title: const Text('OpenRouter 여행 추천')),
       body: Column(
         children: [
