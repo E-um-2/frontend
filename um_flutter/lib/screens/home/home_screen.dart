@@ -33,6 +33,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _initLocation(); // ✅ 모바일에서만 위치 초기화
       }
       _loadBikeStations();
+      _loadLandmarkMarkers();
 
   }
 
