@@ -1,9 +1,11 @@
+import 'dart:io';
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart';
+import 'package:um_test/screens/home/write_course_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -26,33 +28,43 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _initLocation();
-    _loadBikeStations();
-    _loadLandmarkMarkers();
+
+     if (Platform.isAndroid || Platform.isIOS) {
+        _initLocation(); // ✅ 모바일에서만 위치 초기화
+      }
+      _loadBikeStations();
+
   }
 
   Future<void> _initLocation() async {
-    Location location = Location();
+    try {
+      Location location = Location();
 
-    bool serviceEnabled = await location.serviceEnabled();
-    if (!serviceEnabled) {
-      serviceEnabled = await location.requestService();
-      if (!serviceEnabled) return;
-    }
+      bool serviceEnabled = await location.serviceEnabled();
+      if (!serviceEnabled) {
+        serviceEnabled = await location.requestService();
+        if (!serviceEnabled) return;
+      }
 
-    PermissionStatus permissionGranted = await location.hasPermission();
-    if (permissionGranted == PermissionStatus.denied) {
-      permissionGranted = await location.requestPermission();
-      if (permissionGranted != PermissionStatus.granted) return;
-    }
+      PermissionStatus permissionGranted = await location.hasPermission();
+      if (permissionGranted == PermissionStatus.denied) {
+        permissionGranted = await location.requestPermission();
+        if (permissionGranted != PermissionStatus.granted) return;
+      }
 
-    final currentLocation = await location.getLocation();
-    if (currentLocation.latitude != null && currentLocation.longitude != null) {
+
+      final currentLocation = await location.getLocation();
       setState(() {
         _currentPosition = LatLng(currentLocation.latitude!, currentLocation.longitude!);
       });
+    } catch (e) {
+      // ✅ Windows 등에서 예외 발생 시 무시
+      print('🚫 위치 권한 초기화 실패: $e');
+
+
     }
   }
+
 
   Future<void> _loadBikeStations() async {
     try {
@@ -307,6 +319,12 @@ class _HomeScreenState extends State<HomeScreen> {
               child: ElevatedButton(
                 onPressed: () {
                   // TODO: 코스 그리기 화면 이동
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const WriteCourseScreen(),
+                    ),
+                  );
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue,
