@@ -13,7 +13,7 @@ class UserCourseDetailScreen extends StatefulWidget {
 }
 
 class _UserCourseDetailScreenState extends State<UserCourseDetailScreen> {
-  late CourseModel course;
+  late UserDevelopedCourseModel course;
   bool isLiked = false;
   bool isScrapped = false;
   late int likes;
@@ -25,8 +25,8 @@ class _UserCourseDetailScreenState extends State<UserCourseDetailScreen> {
     course = mockUserDevelopedCourses.firstWhere(
       (c) => c.id == widget.courseId,
     );
-    likes = course.likes ?? 0;
-    scraps = course.scraps ?? 0;
+    likes = course.likes;
+    scraps = course.scraps;
   }
 
   @override
@@ -59,14 +59,14 @@ class _UserCourseDetailScreenState extends State<UserCourseDetailScreen> {
                     const SizedBox(width: 12),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
+                      children: [
                         Text(
-                          '○○님',
+                          course.authorName,
                           style: TextStyle(fontWeight: FontWeight.bold),
                         ),
                         SizedBox(height: 2),
                         Text(
-                          '05/20 13:22',
+                          course.createdAt,
                           style: TextStyle(color: Colors.grey, fontSize: 12),
                         ),
                       ],
@@ -117,7 +117,7 @@ class _UserCourseDetailScreenState extends State<UserCourseDetailScreen> {
                   children: [
                     IconButton(
                       icon: Icon(
-                        Icons.thumb_up_off_alt,
+                        isLiked ? Icons.thumb_up : Icons.thumb_up_off_alt,
                         color: isLiked ? Colors.black : Colors.grey,
                       ),
                       onPressed: () {
@@ -133,7 +133,7 @@ class _UserCourseDetailScreenState extends State<UserCourseDetailScreen> {
 
                     IconButton(
                       icon: Icon(
-                        Icons.bookmark_border,
+                        isScrapped ? Icons.bookmark : Icons.bookmark_border,
                         color: isScrapped ? Colors.black : Colors.grey,
                       ),
                       onPressed: () {
