@@ -6,35 +6,10 @@ import 'dart:convert';
 
 import 'package:um_test/screens/home/write_course_screen.dart';
 
-
 class AiPlaceListScreen extends StatelessWidget {
   final List<String> places;
 
   const AiPlaceListScreen({super.key, required this.places});
-
-  Future<LatLng?> geocodePlace(String placeName) async {
-    final apiKey = dotenv.env['GOOGLE_MAPS_API_KEY'];
-    if (apiKey == null) return null;
-
-    final url = Uri.parse(
-      'https://maps.googleapis.com/maps/api/geocode/json?address=${Uri.encodeComponent(placeName)},인천&key=$apiKey',
-    );
-
-    try {
-      final response = await http.get(url);
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final results = data['results'] as List<dynamic>;
-        if (results.isNotEmpty) {
-          final location = results[0]['geometry']['location'];
-          return LatLng(location['lat'], location['lng']);
-        }
-      }
-    } catch (e) {
-      debugPrint('Geocode error: $e');
-    }
-    return null;
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -48,23 +23,103 @@ class AiPlaceListScreen extends StatelessWidget {
             title: Text(place),
             trailing: const Icon(Icons.arrow_forward_ios),
             onTap: () async {
-              final coord = await geocodePlace(place);
-              if (coord != null) {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => WriteCourseScreen(initialPosition: coord),
-                  ),
-                );
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('해당 장소의 위치를 찾을 수 없습니다.')),
-                );
-              }
+              await geocodePlaceAndNavigate(context, place);
             },
           );
         },
       ),
     );
   }
+
+  Future<void> geocodePlaceAndNavigate(BuildContext context, String placeName) async {
+    final apiKey = dotenv.env['GOOGLE_MAPS_API_KEY'];
+    if (apiKey == null) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("API 키가 설정되지 않았습니다.")),
+      );
+      return;
+    }
+
+    final cleaned = cleanPlaceName(placeName);
+
+    List<String> queries = [
+      "$cleaned, 인천",
+      cleaned,
+      placeName.split(' ').first + " 인천",
+    ];
+
+    LatLng? coord;
+    for (final query in queries) {
+      coord = await tryGeocode(query, apiKey);
+      if (coord != null) break;
+    }
+
+    if (!context.mounted) return;
+
+    if (coord != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => WriteCourseScreen(initialPosition: coord),
+        ),
+      );
+    } else {
+      showDialog(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text("위치 검색 실패"),
+          content: Text("‘$placeName’의 위치를 찾을 수 없습니다.\n지도로 직접 코스를 그리시겠어요?"),
+          actions: [
+            TextButton(
+              child: const Text("직접 그리기"),
+              onPressed: () {
+                Navigator.pop(dialogContext);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const WriteCourseScreen(),
+                  ),
+                );
+              },
+            ),
+            TextButton(
+              child: const Text("취소"),
+              onPressed: () => Navigator.pop(dialogContext),
+            )
+          ],
+        ),
+      );
+    }
+  }
+}
+
+String cleanPlaceName(String raw) {
+  return raw
+      .replaceAll(RegExp(r'^[0-9]+\.?\s*'), '') // 앞쪽 숫자 제거
+      .replaceAll(RegExp(r'(자전거\s*)?(도로|코스|길|경로|여행지)?'), '') // 불필요한 접미사 제거
+      .replaceAll(RegExp(r'[^\w\s가-힣]'), '') // 특수문자 제거
+      .replaceAll(RegExp(r'\s+'), ' ') // 중복 공백 제거
+      .trim();
+}
+
+Future<LatLng?> tryGeocode(String query, String apiKey) async {
+  final url = Uri.parse(
+    'https://maps.googleapis.com/maps/api/geocode/json?address=${Uri.encodeComponent(query)}&key=$apiKey',
+  );
+
+  try {
+    final response = await http.get(url);
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final results = data['results'] as List;
+      if (results.isNotEmpty) {
+        final location = results[0]['geometry']['location'];
+        return LatLng(location['lat'], location['lng']);
+      }
+    }
+  } catch (e) {
+    debugPrint('Geocode error for "$query": $e');
+  }
+  return null;
 }

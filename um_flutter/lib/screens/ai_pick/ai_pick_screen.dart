@@ -1,60 +1,27 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:http/http.dart' as http;
+import 'ai_placelist_screen.dart';
+import 'package:um_test/screens/home/write_course_screen.dart';
 
-import 'ai_placelist_screen.dart'; // 별도 파일로 분리된 장소 리스트 화면
-
-List<String> extractPlaces(String aiReply) {
-  final lines = aiReply.split('\n');
-  final List<String> places = [];
-
-  for (var line in lines) {
-    var text = line.trim();
-
-    // 모든 이모지 및 깨진 문자 제거
-    text = text.replaceAll(
-      RegExp(
-        r'[\u{1F300}-\u{1F6FF}]|'   // Symbols & pictographs
-        r'[\u{1F900}-\u{1F9FF}]|'   // Supplemental symbols
-        r'[\u{2600}-\u{26FF}]|'     // Misc symbols
-        r'[\u{2700}-\u{27BF}]|'     // Dingbats
-        r'[^\u0000-\u007F\uAC00-\uD7A3\s]', // 비 ASCII, 비 한글 제거
-        unicode: true,
-      ),
-      '',
-    );
-
-    // 설명 제거
-    if (text.contains("추천") || text.contains("즐기세요") || text.contains("소개") || text.length < 2) {
-      continue;
-    }
-
-    // 접미사 제거 (자전거 관련 단어)
-    text = text.replaceAll(RegExp(r'(자전거\s*)?(도로|코스|길|경로)$'), '').trim();
-
-    if (text.isNotEmpty && text.length <= 20) {
-      places.add(text);
-    }
-  }
-
-  return places.toSet().toList();
-}
-
-class AiChatScreen extends StatefulWidget {
-  const AiChatScreen({super.key});
+class AiPickScreen extends StatefulWidget {
+  const AiPickScreen({super.key});
 
   @override
-  State<AiChatScreen> createState() => _AiChatScreenState();
+  State<AiPickScreen> createState() => _AiPickScreenState();
 }
 
-class _AiChatScreenState extends State<AiChatScreen> {
+class _AiPickScreenState extends State<AiPickScreen> {
   final TextEditingController _controller = TextEditingController();
   final List<ChatMessage> _messages = [];
   bool _isLoading = false;
 
   void _handleSend() async {
     final rawInput = _controller.text.trim();
+
+    if (rawInput.isEmpty) return;
 
     final lastIncheon = _messages.reversed.firstWhere(
       (m) => m.sender == 'user' && m.text.contains("인천"),
@@ -111,7 +78,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
           - 단, "서울", "부산", "제주" 등 인천 외 지역이 명확히 언급되면 "죄송합니다, 인천 지역 여행만 도와드릴 수 있습니다."라고 답변하세요.
 
           📝 [답변 형식]
-          - 줄바꿈(\\n)을 활용해 보기 좋게 단락을 나누세요.
+          - 줄바꿈(\n)을 활용해 보기 좋게 단락을 나누세요.
           - 각 추천 장소는 제목 + 설명 형식으로 작성하세요.
           - 🚲 📍 🌊 같은 이모지를 적절히 활용하세요.
           '''
@@ -138,10 +105,29 @@ class _AiChatScreenState extends State<AiChatScreen> {
     }
   }
 
+  List<String> extractPlaces(String aiReply) {
+    final lines = aiReply.split('\n');
+    final List<String> places = [];
+
+    for (var line in lines) {
+      var text = line.trim();
+      text = text.replaceAll(RegExp(r'[^가-힣\w\s]'), '');
+      if (text.contains("추천") || text.contains("즐기세요") || text.contains("소개") || text.length < 2) {
+        continue;
+      }
+      text = text.replaceAll(RegExp(r'(자전거\s*)?(도로|코스|길|경로)\$'), '').trim();
+      if (text.isNotEmpty && text.length <= 20) {
+        places.add(text);
+      }
+    }
+
+    return places.toSet().toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('OpenRouter 여행 추천')),
+      appBar: AppBar(title: const Text('AI 자전거 코스 추천')),
       body: Column(
         children: [
           Expanded(
@@ -152,8 +138,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
                 final msg = _messages[index];
                 final isUser = msg.sender == 'user';
                 return Align(
-                  alignment:
-                      isUser ? Alignment.centerRight : Alignment.centerLeft,
+                  alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
                   child: Container(
                     margin: const EdgeInsets.symmetric(vertical: 4),
                     padding: const EdgeInsets.all(12),
@@ -203,8 +188,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
                 backgroundColor: Colors.green[600],
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                shape:
-                    RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
             ),
           ),
