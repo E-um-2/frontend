@@ -17,15 +17,23 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final Completer<GoogleMapController> _controller = Completer();
   LatLng? _currentPosition;
+
   Set<Marker> _bikeMarkers = {};
+  Set<Marker> _landmarkMarkers = {};
+  Set<Marker> _visibleMarkers = {};
+
+  bool _showLandmarks = false;
+  bool _showBikeStations = true;
 
   @override
   void initState() {
     super.initState();
+
      if (Platform.isAndroid || Platform.isIOS) {
         _initLocation(); // ✅ 모바일에서만 위치 초기화
       }
       _loadBikeStations();
+
   }
 
   Future<void> _initLocation() async {
@@ -44,6 +52,7 @@ class _HomeScreenState extends State<HomeScreen> {
         if (permissionGranted != PermissionStatus.granted) return;
       }
 
+
       final currentLocation = await location.getLocation();
       setState(() {
         _currentPosition = LatLng(currentLocation.latitude!, currentLocation.longitude!);
@@ -51,36 +60,154 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (e) {
       // ✅ Windows 등에서 예외 발생 시 무시
       print('🚫 위치 권한 초기화 실패: $e');
+
+
     }
   }
 
 
   Future<void> _loadBikeStations() async {
-    final String jsonString = await rootBundle.loadString('assets/bike_stations.json');
-    final List<dynamic> data = json.decode(jsonString);
+    try {
+      final String jsonString = await rootBundle.loadString('assets/bike_stations.json');
+      final List<dynamic> data = json.decode(jsonString);
 
-    Set<Marker> loadedMarkers = {};
+      Set<Marker> loadedMarkers = {};
 
-    for (var item in data) {
-      final String? name = item['name'];
-      final double? lat = double.tryParse(item['latitude'].toString());
-      final double? lng = double.tryParse(item['longitude'].toString());
+      for (var item in data) {
+        final String? name = item['name'];
+        final double? lat = item['latitude'] is double
+            ? item['latitude']
+            : double.tryParse(item['latitude'].toString());
+        final double? lng = item['longitude'] is double
+            ? item['longitude']
+            : double.tryParse(item['longitude'].toString());
 
-      if (lat != null && lng != null) {
-        loadedMarkers.add(
-          Marker(
-            markerId: MarkerId(name ?? 'Unknown'),
-            position: LatLng(lat, lng),
-            infoWindow: InfoWindow(title: name),
-            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueCyan),
-          ),
-        );
+        if (lat != null && lng != null && name != null) {
+          loadedMarkers.add(
+            Marker(
+              markerId: MarkerId("bike_${name}_${lat}_$lng"),
+              position: LatLng(lat, lng),
+              infoWindow: InfoWindow(title: name),
+              icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueCyan),
+            ),
+          );
+        }
       }
-    }
 
+      setState(() {
+        _bikeMarkers = loadedMarkers;
+        _updateVisibleMarkers();
+      });
+    } catch (e) {
+      debugPrint('자전거 거치소 로딩 중 오류: $e');
+    }
+  }
+
+  Future<void> _loadLandmarkMarkers() async {
+    try {
+      final String jsonString = await rootBundle.loadString('assets/landmarks.json');
+      final List<dynamic> data = json.decode(jsonString);
+
+      Set<Marker> landmarks = {};
+
+      for (var item in data) {
+        final String? name = item['name'];
+        final String? description = item['description'];
+        final double? lat = item['latitude'] is double
+            ? item['latitude']
+            : double.tryParse(item['latitude'].toString());
+        final double? lng = item['longitude'] is double
+            ? item['longitude']
+            : double.tryParse(item['longitude'].toString());
+
+        if (lat != null && lng != null) {
+          final snippetText = (description != null && description.isNotEmpty)
+              ? (description.length > 20 ? '${description.substring(0, 30)}...' : description)
+              : '';
+
+          landmarks.add(
+            Marker(
+              markerId: MarkerId("landmark_${lat}_$lng"),
+              position: LatLng(lat, lng),
+              infoWindow: InfoWindow(
+                title: name,
+                snippet: snippetText,
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => Dialog(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      backgroundColor: Colors.white,
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              name ?? '이름 없음',
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              description ?? '설명 없음',
+                              style: const TextStyle(fontSize: 16, color: Colors.black54),
+                            ),
+                            const SizedBox(height: 20),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: Colors.blue,
+                                ),
+                                child: const Text('닫기'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+              icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+            ),
+          );
+        }
+      }
+
+      setState(() {
+        _landmarkMarkers = landmarks;
+        _updateVisibleMarkers();
+      });
+    } catch (e) {
+      debugPrint('랜드마크 로딩 중 오류: $e');
+    }
+  }
+
+  void _updateVisibleMarkers() {
     setState(() {
-      _bikeMarkers = loadedMarkers;
+      _visibleMarkers.clear();
+      if (_showBikeStations) _visibleMarkers.addAll(_bikeMarkers);
+      if (_showLandmarks) _visibleMarkers.addAll(_landmarkMarkers);
     });
+  }
+
+  void _toggleLandmarkMarkers() {
+    _showLandmarks = !_showLandmarks;
+    _updateVisibleMarkers();
+  }
+
+  void _toggleBikeMarkers() {
+    _showBikeStations = !_showBikeStations;
+    _updateVisibleMarkers();
   }
 
   @override
@@ -100,38 +227,92 @@ class _HomeScreenState extends State<HomeScreen> {
             onMapCreated: (GoogleMapController controller) {
               _controller.complete(controller);
             },
-            markers: _bikeMarkers,
+            markers: _visibleMarkers,
+            zoomControlsEnabled: true,
+            mapToolbarEnabled: false,
           ),
           Positioned(
             right: 16,
-            bottom: 120, // 로봇 버튼 (위쪽)
-            child: FloatingActionButton(
-              heroTag: 'robot',
-              backgroundColor: Colors.white,
-              onPressed: () {
-                // TODO: 로봇 기능
-              },
-              child: Image.asset('assets/images/robot_icon.png', width: 24),
+            bottom: 140,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeInOut,
+                  padding: EdgeInsets.zero,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: _showBikeStations
+                        ? Border.all(color: Colors.blue, width: 2)
+                        : null,
+                  ),
+                  child: FloatingActionButton(
+                    heroTag: 'toggleBike',
+                    mini: true,
+                    backgroundColor: Colors.white,
+                    onPressed: _toggleBikeMarkers,
+                    shape: const CircleBorder(),
+                    child: const Icon(
+                      Icons.pedal_bike,
+                      color: Colors.blue,
+                      size: 24,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeInOut,
+                  padding: EdgeInsets.zero,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: _showLandmarks
+                        ? Border.all(color: Colors.green, width: 2)
+                        : null,
+                  ),
+                  child: FloatingActionButton(
+                    heroTag: 'toggleLandmark',
+                    mini: true,
+                    backgroundColor: Colors.white,
+                    onPressed: _toggleLandmarkMarkers,
+                    shape: const CircleBorder(),
+                    elevation: 2,
+                    child: const Icon(
+                      Icons.account_balance,
+                      color: Colors.green,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                FloatingActionButton(
+                  heroTag: 'locationButton',
+                  mini: true,
+                  backgroundColor: Colors.white,
+                  onPressed: () async {
+                    try {
+                      final location = await Location().getLocation();
+                      if (location.latitude != null && location.longitude != null) {
+                        final controller = await _controller.future;
+                        controller.animateCamera(
+                          CameraUpdate.newLatLng(
+                            LatLng(location.latitude!, location.longitude!),
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      debugPrint('위치 이동 실패: $e');
+                    }
+                  },
+                  shape: const CircleBorder(),
+                  child: const Icon(Icons.my_location, color: Colors.blue),
+                ),
+              ],
             ),
           ),
           Positioned(
-            right: 16,
-            bottom: 50, // 내 위치 버튼 (아래쪽)
-            child: FloatingActionButton(
-              heroTag: 'location',
-              backgroundColor: Colors.white,
-              onPressed: () async {
-                final location = await Location().getLocation();
-                final GoogleMapController controller = await _controller.future;
-                controller.animateCamera(CameraUpdate.newLatLng(
-                  LatLng(location.latitude!, location.longitude!),
-                ));
-              },
-              child: const Icon(Icons.my_location, color: Colors.blue),
-            ),
-          ),
-          Positioned(
-            bottom: 20,
+            bottom: 40,
             left: 0,
             right: 0,
             child: Center(
@@ -147,10 +328,15 @@ class _HomeScreenState extends State<HomeScreen> {
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue,
-                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  minimumSize: const Size(260, 48),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
-                child: const Text("코스 그리기", style: TextStyle(fontSize: 16)),
+                child: const Text(
+                  "코스 그리기",
+                  style: TextStyle(fontSize: 16, color: Colors.white),
+                ),
               ),
             ),
           ),

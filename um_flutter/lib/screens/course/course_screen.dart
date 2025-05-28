@@ -67,14 +67,14 @@ class _CourseScreenState extends State<CourseScreen> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 75),
+              padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   _buildFilterRadio('전체', 0),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 4),
                   _buildFilterRadio('주행완료', 1),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 4),
                   _buildFilterRadio('주행미완료', 2),
                 ],
               ),

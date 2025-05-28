@@ -127,7 +127,12 @@ class _AiPickScreenState extends State<AiPickScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+<<<<<<< HEAD
       appBar: AppBar(title: const Text('AI 자전거 코스 추천')),
+=======
+
+      appBar: AppBar(title: const Text('OpenRouter 여행 추천')),
+>>>>>>> 223c3420196fbdbd5823c71f4a6aaf84df24fcc3
       body: Column(
         children: [
           Expanded(
