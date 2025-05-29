@@ -81,5 +81,5 @@ final List<DrawnCourseModel> mockDrawnCourses = [
   ),
 ];
 
-// ✅ 저장된 코스 (2개)
+// 저장된 코스
 final List<SavedCourseModel> mocksavedCourses = [];

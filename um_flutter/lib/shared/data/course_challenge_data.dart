@@ -1,6 +1,6 @@
 import '../../models/course_model.dart';
 
-const List<ChallengeCourseModel> challengeCourseList = [
+final List<ChallengeCourseModel> challengeCourseList = [
   ChallengeCourseModel(
     id: 'c1',
     title: '정사각형의 미학',
