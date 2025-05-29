@@ -1,10 +1,18 @@
-// 주행하기 시연용 전체 코드 (마커 표시 포함)
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:image_gallery_saver_plus/image_gallery_saver_plus.dart';
+import 'package:share_plus/share_plus.dart';
 
 class DrivingScreen extends StatefulWidget {
   const DrivingScreen({super.key});
@@ -16,6 +24,7 @@ class DrivingScreen extends StatefulWidget {
 class _DrivingScreenState extends State<DrivingScreen> {
   final Completer<GoogleMapController> _controller = Completer();
   late GoogleMapController _mapController;
+  final GlobalKey _mapRepaintKey = GlobalKey();
 
   final List<LatLng> _routePolyline = [
     LatLng(37.376146, 126.637759),
@@ -27,16 +36,16 @@ class _DrivingScreenState extends State<DrivingScreen> {
 
   final List<LatLng> _userPath = [];
   LatLng? _currentPosition;
-
   StreamSubscription<LocationData>? _locationSubscription;
   final Location _location = Location();
   bool _isRiding = false;
   int _elapsedSeconds = 0;
   Timer? _timer;
+  bool _isCameraLocked = true;
+  bool _isCapturingImage = false;
 
   bool _showBikeStations = true;
   bool _showLandmarks = false;
-  bool _isCameraLocked = true;
 
   Set<Marker> _bikeMarkers = {};
   Set<Marker> _landmarkMarkers = {};
@@ -49,17 +58,17 @@ class _DrivingScreenState extends State<DrivingScreen> {
         Polyline(
           polylineId: const PolylineId('userPath'),
           points: _userPath,
-          color: Colors.deepPurple,
-          width: 5,
+          color: Colors.green,
+          width: 6,
         ),
       );
     }
-    if (_isRiding) {
+    if (_routePolyline.isNotEmpty) {
       lines.add(
         Polyline(
           polylineId: const PolylineId('route'),
           points: _routePolyline,
-          color: Colors.lightBlue,
+          color: Colors.blue,
           width: 3,
         ),
       );
@@ -76,13 +85,172 @@ class _DrivingScreenState extends State<DrivingScreen> {
   }
 
   Future<void> _initLocation() async {
-    final current = await _location.getLocation();
+    try {
+      final current = await _location.getLocation();
+      setState(() {
+        _currentPosition = LatLng(current.latitude!, current.longitude!);
+      });
+    } catch (e) {
+      Future.delayed(const Duration(seconds: 1), _initLocation);
+    }
+  }
+
+  Future<void> _loadBikeStations() async {
+    try {
+      final String jsonString = await rootBundle.loadString('assets/bike_stations.json');
+      final List<dynamic> data = json.decode(jsonString);
+
+      Set<Marker> loadedMarkers = {};
+
+      for (var item in data) {
+        final String? name = item['name'];
+        final double? lat = item['latitude'] is double
+            ? item['latitude']
+            : double.tryParse(item['latitude'].toString());
+        final double? lng = item['longitude'] is double
+            ? item['longitude']
+            : double.tryParse(item['longitude'].toString());
+
+        if (lat != null && lng != null && name != null) {
+          loadedMarkers.add(
+            Marker(
+              markerId: MarkerId("bike_${name}_${lat}_$lng"),
+              position: LatLng(lat, lng),
+              infoWindow: InfoWindow(title: name),
+              icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueCyan),
+            ),
+          );
+        }
+      }
+
+      setState(() {
+        _bikeMarkers = loadedMarkers;
+        _updateVisibleMarkers();
+      });
+    } catch (e) {
+      debugPrint('자전거 거치소 로딩 중 오류: $e');
+    }
+  }
+
+
+  Future<void> _loadLandmarkMarkers() async {
+    try {
+      final String jsonString = await rootBundle.loadString('assets/landmarks.json');
+      final List<dynamic> data = json.decode(jsonString);
+
+      Set<Marker> landmarks = {};
+
+      for (var item in data) {
+        final String? name = item['name'];
+        final String? description = item['description'];
+        final double? lat = item['latitude'] is double
+            ? item['latitude']
+            : double.tryParse(item['latitude'].toString());
+        final double? lng = item['longitude'] is double
+            ? item['longitude']
+            : double.tryParse(item['longitude'].toString());
+
+        if (lat != null && lng != null) {
+          final snippetText = (description != null && description.isNotEmpty)
+              ? (description.length > 20 ? '${description.substring(0, 30)}...' : description)
+              : '';
+
+          landmarks.add(
+            Marker(
+              markerId: MarkerId("landmark_${lat}_$lng"),
+              position: LatLng(lat, lng),
+              infoWindow: InfoWindow(
+                title: name,
+                snippet: snippetText,
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => Dialog(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      backgroundColor: Colors.white,
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              name ?? '이름 없음',
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              description ?? '설명 없음',
+                              style: const TextStyle(fontSize: 16, color: Colors.black54),
+                            ),
+                            const SizedBox(height: 20),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: Colors.blue,
+                                ),
+                                child: const Text('닫기'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+              icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+            ),
+          );
+        }
+      }
+
+      setState(() {
+        _landmarkMarkers = landmarks;
+        _updateVisibleMarkers();
+      });
+    } catch (e) {
+      debugPrint('랜드마크 로딩 중 오류: $e');
+    }
+  }
+
+  void _updateVisibleMarkers() {
     setState(() {
-      _currentPosition = LatLng(current.latitude!, current.longitude!);
+      _visibleMarkers.clear();
+      if (_showBikeStations) _visibleMarkers.addAll(_bikeMarkers);
+      if (_showLandmarks) _visibleMarkers.addAll(_landmarkMarkers);
     });
   }
 
-  void _startRide() async {
+
+  void _toggleBikeMarkers() {
+    _showBikeStations = !_showBikeStations;
+    _updateVisibleMarkers();
+  }
+
+
+  void _toggleLandmarkMarkers() {
+    _showLandmarks = !_showLandmarks;
+    _updateVisibleMarkers();
+  }
+
+  Future<void> _goToCurrentLocation() async {
+    final loc = await _location.getLocation();
+    if (loc.latitude != null && loc.longitude != null) {
+      final controller = await _controller.future;
+      controller.animateCamera(CameraUpdate.newLatLng(LatLng(loc.latitude!, loc.longitude!)));
+    }
+  }
+
+  void _startRide() {
     setState(() {
       _isRiding = true;
       _userPath.clear();
@@ -109,7 +277,6 @@ class _DrivingScreenState extends State<DrivingScreen> {
   void _endRide() async {
     await _locationSubscription?.cancel();
     _timer?.cancel();
-
     setState(() {
       _isRiding = false;
     });
@@ -121,113 +288,82 @@ class _DrivingScreenState extends State<DrivingScreen> {
     return "$m:$s";
   }
 
-  void _toggleBikeMarkers() {
-    setState(() {
-      _showBikeStations = !_showBikeStations;
-      _updateVisibleMarkers();
-    });
+  Future<void> _showSaveDialog() async {
+    setState(() => _isCapturingImage = true);
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    final imageBytes = await _captureRouteImageBytes();
+    setState(() => _isCapturingImage = false);
+    if (imageBytes == null) return;
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('경로 이미지 저장 또는 공유'),
+        content: Image.memory(imageBytes),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              await _saveImageToGallery(imageBytes);
+              Navigator.of(context).pop();
+            },
+            child: const Text('갤러리에 저장'),
+          ),
+          TextButton(
+            onPressed: () async {
+              final path = await _saveTempImage(imageBytes);
+              await Share.shareXFiles([XFile(path)], text: '내 자전거 주행 경로');
+              Navigator.of(context).pop();
+            },
+            child: const Text('공유하기'),
+          ),
+        ],
+      ),
+    );
   }
 
-  void _toggleLandmarkMarkers() {
-    setState(() {
-      _showLandmarks = !_showLandmarks;
-      _updateVisibleMarkers();
-    });
-  }
-
-  void _updateVisibleMarkers() {
-    setState(() {
-      _visibleMarkers.clear();
-      if (_showBikeStations) _visibleMarkers.addAll(_bikeMarkers);
-      if (_showLandmarks) _visibleMarkers.addAll(_landmarkMarkers);
-    });
-  }
-
-  Future<void> _loadBikeStations() async {
+  Future<Uint8List?> _captureRouteImageBytes() async {
     try {
-      final String jsonString = await rootBundle.loadString('assets/bike_stations.json');
-      final List<dynamic> data = json.decode(jsonString);
-      Set<Marker> loadedMarkers = {};
-
-      for (var item in data) {
-        final String? name = item['name'];
-        final double? lat = item['latitude'] is double ? item['latitude'] : double.tryParse(item['latitude'].toString());
-        final double? lng = item['longitude'] is double ? item['longitude'] : double.tryParse(item['longitude'].toString());
-
-        if (lat != null && lng != null && name != null) {
-          loadedMarkers.add(
-            Marker(
-              markerId: MarkerId("bike_${name}_${lat}_$lng"),
-              position: LatLng(lat, lng),
-              infoWindow: InfoWindow(title: name),
-              icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueCyan),
-            ),
-          );
-        }
-      }
-
-      _bikeMarkers = loadedMarkers;
-      _updateVisibleMarkers();
+      RenderRepaintBoundary boundary =
+      _mapRepaintKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
+      final image = await boundary.toImage(pixelRatio: 3.0);
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      return byteData?.buffer.asUint8List();
     } catch (e) {
-      debugPrint('자전거 거치소 로딩 중 오류: $e');
+      print("이미지 캡처 실패: $e");
+      return null;
     }
   }
 
-  Future<void> _loadLandmarkMarkers() async {
-    try {
-      final String jsonString = await rootBundle.loadString('assets/landmarks.json');
-      final List<dynamic> data = json.decode(jsonString);
-      Set<Marker> landmarks = {};
+  Future<void> _saveImageToGallery(Uint8List bytes) async {
+    final status = await Permission.photos.request();
+    final storage = await Permission.storage.request();
 
-      for (var item in data) {
-        final String? name = item['name'];
-        final String? description = item['description'];
-        final double? lat = item['latitude'] is double ? item['latitude'] : double.tryParse(item['latitude'].toString());
-        final double? lng = item['longitude'] is double ? item['longitude'] : double.tryParse(item['longitude'].toString());
+    if (!status.isGranted && !storage.isGranted) return;
 
-        if (lat != null && lng != null) {
-          final snippetText = (description != null && description.isNotEmpty)
-              ? (description.length > 20 ? '${description.substring(0, 30)}...' : description)
-              : '';
+    final result = await ImageGallerySaverPlus.saveImage(
+      bytes,
+      quality: 100,
+      name: "route_${DateTime.now().millisecondsSinceEpoch}",
+    );
 
-          landmarks.add(
-            Marker(
-              markerId: MarkerId("landmark_${lat}_$lng"),
-              position: LatLng(lat, lng),
-              infoWindow: InfoWindow(
-                title: name,
-                snippet: snippetText,
-              ),
-              icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
-            ),
-          );
-        }
-      }
-
-      _landmarkMarkers = landmarks;
-      _updateVisibleMarkers();
-    } catch (e) {
-      debugPrint('랜드마크 로딩 중 오류: $e');
-    }
-  }
-
-  Future<void> _goToCurrentLocation() async {
-    final location = await _location.getLocation();
-    if (location.latitude != null && location.longitude != null) {
-      final controller = await _controller.future;
-      controller.animateCamera(
-        CameraUpdate.newLatLng(
-          LatLng(location.latitude!, location.longitude!),
-        ),
+    if (result['isSuccess'] == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('갤러리에 저장되었습니다.')),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('저장에 실패했습니다.')),
       );
     }
   }
 
-  @override
-  void dispose() {
-    _locationSubscription?.cancel();
-    _timer?.cancel();
-    super.dispose();
+  Future<String> _saveTempImage(Uint8List bytes) async {
+    final directory = await getTemporaryDirectory();
+    final filePath = '${directory.path}/route_${DateTime.now().millisecondsSinceEpoch}.png';
+    final file = File(filePath);
+    await file.writeAsBytes(bytes);
+    return file.path;
   }
 
   @override
@@ -235,104 +371,126 @@ class _DrivingScreenState extends State<DrivingScreen> {
     return Scaffold(
       body: _currentPosition == null
           ? const Center(child: CircularProgressIndicator())
-          : Stack(
-        children: [
-          GoogleMap(
-            initialCameraPosition: CameraPosition(
-              target: _currentPosition!,
-              zoom: 16,
+          : RepaintBoundary(
+        key: _mapRepaintKey,
+        child: Stack(
+          children: [
+            GoogleMap(
+              initialCameraPosition: CameraPosition(
+                target: _currentPosition!,
+                zoom: 16,
+              ),
+              onMapCreated: (controller) {
+                _controller.complete(controller);
+                _mapController = controller;
+              },
+              onCameraMoveStarted: () => _isCameraLocked = false,
+              myLocationEnabled: !_isCapturingImage,
+              myLocationButtonEnabled: false,
+              markers: _isCapturingImage ? {} : _visibleMarkers,
+              polylines: _polylines,
             ),
-            onMapCreated: (controller) {
-              _controller.complete(controller);
-              _mapController = controller;
-            },
-            onCameraMoveStarted: () {
-              _isCameraLocked = false;
-            },
-            polylines: _polylines,
-            markers: _visibleMarkers,
-            myLocationEnabled: true,
-            myLocationButtonEnabled: false,
-          ),
-          Positioned(
-            bottom: 130,
-            left: 20,
-            right: 20,
-            child: Card(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
+            if (!_isCapturingImage) ...[
+              Positioned(
+                bottom: 110,
+                left: 20,
+                right: 20,
+                child: Card(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('주행시간', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 8),
+                        Text(_formattedTime(), style: const TextStyle(fontSize: 24)),
+                        const SizedBox(height: 8),
+                        const Text(
+                          '특정 체크인 이탈되면 코스 탈락이 될 수도 있어요',
+                          style: TextStyle(fontSize: 12, color: Colors.black54),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                bottom: 40,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      ElevatedButton(
+                        onPressed: _isRiding ? _endRide : _startRide,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue,
+                          minimumSize: const Size(260, 48),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        child: Text(
+                          _isRiding ? '주행 종료' : '주행하기',
+                          style: const TextStyle(fontSize: 16, color: Colors.white),
+                        ),
+                      ),
+                      if (!_isRiding && _userPath.isNotEmpty) ...[
+                        const SizedBox(width: 12),
+                        ElevatedButton(
+                          onPressed: _showSaveDialog,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            minimumSize: const Size(48, 48),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          child: const Icon(Icons.download, color: Colors.blue),
+                        ),
+                      ]
+                    ],
+                  ),
+                ),
+              ),
+              Positioned(
+                right: 16,
+                bottom: 250,
                 child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('주행시간', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    FloatingActionButton(
+                      heroTag: 'toggleBike',
+                      mini: true,
+                      backgroundColor: Colors.white,
+                      onPressed: _toggleBikeMarkers,
+                      shape: const CircleBorder(),
+                      child: Icon(Icons.pedal_bike, color: _showBikeStations ? Colors.blue : Colors.grey),
+                    ),
                     const SizedBox(height: 8),
-                    Text(_formattedTime(), style: const TextStyle(fontSize: 24)),
+                    FloatingActionButton(
+                      heroTag: 'toggleLandmark',
+                      mini: true,
+                      backgroundColor: Colors.white,
+                      onPressed: _toggleLandmarkMarkers,
+                      shape: const CircleBorder(),
+                      child: Icon(Icons.account_balance, color: _showLandmarks ? Colors.green : Colors.grey),
+                    ),
                     const SizedBox(height: 8),
-                    const Text(
-                      '특정 체크인 이탈되면 코스 탈락이 될 수도 있어요',
-                      style: TextStyle(fontSize: 12, color: Colors.black54),
+                    FloatingActionButton(
+                      heroTag: 'locationButton',
+                      mini: true,
+                      backgroundColor: Colors.white,
+                      onPressed: _goToCurrentLocation,
+                      shape: const CircleBorder(),
+                      child: const Icon(Icons.my_location, color: Colors.blue),
                     ),
                   ],
                 ),
               ),
-            ),
-          ),
-          Positioned(
-            bottom: 40,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: ElevatedButton(
-                onPressed: _isRiding ? _endRide : _startRide,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  minimumSize: const Size(260, 48),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-                child: Text(
-                  _isRiding ? '주행 종료' : '주행하기',
-                  style: const TextStyle(fontSize: 16, color: Colors.white),
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            right: 16,
-            bottom: 240,
-            child: Column(
-              children: [
-                FloatingActionButton(
-                  heroTag: 'toggleBike',
-                  mini: true,
-                  backgroundColor: Colors.white,
-                  onPressed: _toggleBikeMarkers,
-                  shape: const CircleBorder(),
-                  child: const Icon(Icons.pedal_bike, color: Colors.blue),
-                ),
-                const SizedBox(height: 8),
-                FloatingActionButton(
-                  heroTag: 'toggleLandmark',
-                  mini: true,
-                  backgroundColor: Colors.white,
-                  onPressed: _toggleLandmarkMarkers,
-                  shape: const CircleBorder(),
-                  child: const Icon(Icons.account_balance, color: Colors.green),
-                ),
-                const SizedBox(height: 8),
-                FloatingActionButton(
-                  heroTag: 'locationButton',
-                  mini: true,
-                  backgroundColor: Colors.white,
-                  onPressed: _goToCurrentLocation,
-                  shape: const CircleBorder(),
-                  child: const Icon(Icons.my_location, color: Colors.blue),
-                ),
-              ],
-            ),
-          ),
-        ],
+            ]
+          ],
+        ),
       ),
     );
   }

@@ -52,18 +52,20 @@ class _HomeScreenState extends State<HomeScreen> {
         if (permissionGranted != PermissionStatus.granted) return;
       }
 
-
       final currentLocation = await location.getLocation();
+
+      if (!mounted) return;
       setState(() {
         _currentPosition = LatLng(currentLocation.latitude!, currentLocation.longitude!);
       });
     } catch (e) {
-      // ✅ Windows 등에서 예외 발생 시 무시
-      print('🚫 위치 권한 초기화 실패: $e');
+      debugPrint('🚫 위치 권한 초기화 실패: $e');
 
-
+      // 일정 시간 후 재시도 (예: 1초 뒤)
+      Future.delayed(const Duration(seconds: 1), _initLocation);
     }
   }
+
 
 
   Future<void> _loadBikeStations() async {
@@ -200,13 +202,13 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  void _toggleLandmarkMarkers() {
-    _showLandmarks = !_showLandmarks;
+  void _toggleBikeMarkers() {
+    _showBikeStations = !_showBikeStations;
     _updateVisibleMarkers();
   }
 
-  void _toggleBikeMarkers() {
-    _showBikeStations = !_showBikeStations;
+  void _toggleLandmarkMarkers() {
+    _showLandmarks = !_showLandmarks;
     _updateVisibleMarkers();
   }
 
@@ -235,55 +237,23 @@ class _HomeScreenState extends State<HomeScreen> {
             right: 16,
             bottom: 140,
             child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  curve: Curves.easeInOut,
-                  padding: EdgeInsets.zero,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: _showBikeStations
-                        ? Border.all(color: Colors.blue, width: 2)
-                        : null,
-                  ),
-                  child: FloatingActionButton(
-                    heroTag: 'toggleBike',
-                    mini: true,
-                    backgroundColor: Colors.white,
-                    onPressed: _toggleBikeMarkers,
-                    shape: const CircleBorder(),
-                    child: const Icon(
-                      Icons.pedal_bike,
-                      color: Colors.blue,
-                      size: 24,
-                    ),
-                  ),
+                FloatingActionButton(
+                  heroTag: 'toggleBike',
+                  mini: true,
+                  backgroundColor: Colors.white,
+                  onPressed: _toggleBikeMarkers,
+                  shape: const CircleBorder(),
+                  child: Icon(Icons.pedal_bike, color: _showBikeStations ? Colors.blue : Colors.grey),
                 ),
                 const SizedBox(height: 8),
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  curve: Curves.easeInOut,
-                  padding: EdgeInsets.zero,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: _showLandmarks
-                        ? Border.all(color: Colors.green, width: 2)
-                        : null,
-                  ),
-                  child: FloatingActionButton(
-                    heroTag: 'toggleLandmark',
-                    mini: true,
-                    backgroundColor: Colors.white,
-                    onPressed: _toggleLandmarkMarkers,
-                    shape: const CircleBorder(),
-                    elevation: 2,
-                    child: const Icon(
-                      Icons.account_balance,
-                      color: Colors.green,
-                    ),
-                  ),
+                FloatingActionButton(
+                  heroTag: 'toggleLandmark',
+                  mini: true,
+                  backgroundColor: Colors.white,
+                  onPressed: _toggleLandmarkMarkers,
+                  shape: const CircleBorder(),
+                  child: Icon(Icons.account_balance, color: _showLandmarks ? Colors.green : Colors.grey),
                 ),
                 const SizedBox(height: 8),
                 FloatingActionButton(
