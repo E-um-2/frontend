@@ -61,13 +61,16 @@ class _UserCourseDetailScreenState extends State<UserCourseDetailScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          course.authorName,
-                          style: TextStyle(fontWeight: FontWeight.bold),
+                          '${course.authorName} 님',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
-                        SizedBox(height: 2),
+                        const SizedBox(height: 2),
                         Text(
                           course.createdAt,
-                          style: TextStyle(color: Colors.grey, fontSize: 12),
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 12,
+                          ),
                         ),
                       ],
                     ),

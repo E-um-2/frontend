@@ -3,19 +3,10 @@ import 'package:go_router/go_router.dart';
 
 class NavHeader extends StatelessWidget implements PreferredSizeWidget {
   final String title;
-  final Widget? leftIcon;
-  final Widget? rightIcon;
-  final VoidCallback? onLeftClick;
-  final VoidCallback? onRightClick;
+  final VoidCallback? onBack;
+  final VoidCallback? onDone;
 
-  const NavHeader({
-    super.key,
-    required this.title,
-    this.leftIcon,
-    this.rightIcon,
-    this.onLeftClick,
-    this.onRightClick,
-  });
+  const NavHeader({super.key, required this.title, this.onBack, this.onDone});
 
   @override
   Widget build(BuildContext context) {
@@ -30,30 +21,31 @@ class NavHeader extends StatelessWidget implements PreferredSizeWidget {
             bottom: BorderSide(color: Color(0xFFEEEEEE), width: 1),
           ),
         ),
-        child: Stack(
-          alignment: Alignment.center,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // 가운데 타이틀
+            // 왼쪽 아이콘
+            GestureDetector(
+              onTap: onBack ?? () => context.pop(),
+              child: const Icon(Icons.chevron_left, size: 28),
+            ),
+
+            // 타이틀
             Text(
               title,
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
 
-            // 왼쪽 아이콘
-            Align(
-              alignment: Alignment.centerLeft,
-              child: GestureDetector(
-                onTap: onLeftClick ?? () => context.pop(), // ✅ go_router에 맞게 수정
-                child: leftIcon ?? const Icon(Icons.chevron_left, size: 28),
-              ),
-            ),
-
-            // 오른쪽 아이콘 또는 Spacer
-            Align(
-              alignment: Alignment.centerRight,
-              child: GestureDetector(
-                onTap: onRightClick,
-                child: rightIcon ?? const SizedBox(width: 28),
+            // 오른쪽 '완료' 텍스트
+            GestureDetector(
+              onTap: onDone,
+              child: const Text(
+                '완료',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black, // 필요 시 Colors.blue로 변경 가능
+                ),
               ),
             ),
           ],

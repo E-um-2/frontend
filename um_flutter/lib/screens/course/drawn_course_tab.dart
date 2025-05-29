@@ -4,6 +4,7 @@ import '../../shared/widgets/course_card.dart';
 import '../../shared/screens/empty_course_screen.dart';
 import '../../models/course_model.dart';
 import '../../shared/data/mock_course_data.dart';
+import 'drawn_course_detail_screen.dart'; // ← 추가!
 
 class DrawnCourseTab extends StatelessWidget {
   final int filter;
@@ -11,7 +12,7 @@ class DrawnCourseTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final List<CourseModel> allCourses = mockDrawnCourses;
+    final List<DrawnCourseModel> allCourses = mockDrawnCourses;
 
     final filteredCourses = allCourses.where((course) {
       if (filter == 0) return true;
@@ -34,9 +35,19 @@ class DrawnCourseTab extends StatelessWidget {
 
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      children: filteredCourses
-          .map((course) => CourseCard(course: course))
-          .toList(),
+      children: filteredCourses.map((course) {
+        return GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => DrawnCourseDetailScreen(course: course),
+              ),
+            );
+          },
+          child: CourseCard(course: course),
+        );
+      }).toList(),
     );
   }
 }

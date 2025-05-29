@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:um_test/screens/explore/challenge_course_detail_screen.dart';
 import 'package:um_test/screens/explore/user_developred_course_detail_screen.dart';
-import 'package:um_test/shared/data/mock_course_data.dart';
 import 'package:um_test/shared/screens/driving_screen.dart';
 
 import '../screens/home/home_screen.dart';
