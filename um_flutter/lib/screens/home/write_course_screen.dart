@@ -66,7 +66,8 @@ class _WriteCourseScreenState extends State<WriteCourseScreen> {
               return Marker(
                 markerId: MarkerId(point.toString()),
                 position: point,
-                icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure), // 파란색 마커
+                icon: _customMarker ?? BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure), // 파란색 마커
+                anchor: Offset(0.5, 0.5),
               );
             }).toSet(),
             polylines: {
