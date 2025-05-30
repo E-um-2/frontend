@@ -18,8 +18,17 @@ class _AiPickScreenState extends State<AiPickScreen> {
   final List<ChatMessage> _messages = [];
   bool _isLoading = false;
 
-  void _handleSend() async {
-    final rawInput = _controller.text.trim();
+  final List<String> presetQuestions = [
+    "인천 자전거 코스 추천해줘",
+    "날씨 좋은 날 갈만한 장소",
+    "송도에서 출발하는 코스",
+    "월미도 근처 코스 알려줘",
+    "계양구 자전거길 있어?",
+  ];
+
+
+  void _handleSend({String? prompt}) async {
+    final rawInput = prompt ?? _controller.text.trim();
 
     if (rawInput.isEmpty) return;
 
@@ -33,7 +42,7 @@ class _AiPickScreenState extends State<AiPickScreen> {
         : rawInput;
 
     setState(() {
-      _messages.add(ChatMessage(sender: 'user', text: rawInput));
+      _messages.add(ChatMessage(sender: 'user', text: rawInput)); // 화면에는 사용자의 원문 표시
       _isLoading = true;
     });
 
@@ -111,28 +120,36 @@ class _AiPickScreenState extends State<AiPickScreen> {
 
     for (var line in lines) {
       var text = line.trim();
-      text = text.replaceAll(RegExp(r'[^가-힣\w\s]'), '');
-      if (text.contains("추천") || text.contains("즐기세요") || text.contains("소개") || text.length < 2) {
-        continue;
-      }
-      text = text.replaceAll(RegExp(r'(자전거\s*)?(도로|코스|길|경로)\$'), '').trim();
-      if (text.isNotEmpty && text.length <= 20) {
-        places.add(text);
-      }
+
+      // 1. 너무 짧거나 비어 있는 줄은 제외
+      if (text.isEmpty || text.length < 3) continue;
+
+      // 2. 마무리 인사말, 안내 멘트 필터링
+      if (text.contains("여행되세요") || text.contains("즐기세요") || text.contains("감사합니다")) continue;
+
+      // 3. "1. 송도 ~"처럼 번호로 시작하는 줄만 추출 (제목 줄만)
+      if (!RegExp(r'^\d+\.\s').hasMatch(text)) continue;
+
+      // 4. 특수문자 제거 (단순화)
+      text = text.replaceAll(RegExp(r'[^\w\s가-힣]'), '');
+
+      // 5. 장소 이름만 뽑기 (숫자 제거 포함)
+      final cleaned = text.replaceFirst(RegExp(r'^\d+\.\s*'), '').trim();
+
+      // 6. 너무 긴 문장은 제외
+      if (cleaned.length > 30) continue;
+
+      places.add(cleaned);
     }
 
-    return places.toSet().toList();
+    return places;
   }
+
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-<<<<<<< HEAD
       appBar: AppBar(title: const Text('AI 자전거 코스 추천')),
-=======
-
-      appBar: AppBar(title: const Text('OpenRouter 여행 추천')),
->>>>>>> 223c3420196fbdbd5823c71f4a6aaf84df24fcc3
       body: Column(
         children: [
           Expanded(
@@ -157,11 +174,13 @@ class _AiPickScreenState extends State<AiPickScreen> {
               },
             ),
           ),
+
           if (_isLoading)
             const Padding(
               padding: EdgeInsets.all(8.0),
               child: CircularProgressIndicator(),
             ),
+
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4),
             child: ElevatedButton.icon(
@@ -197,7 +216,33 @@ class _AiPickScreenState extends State<AiPickScreen> {
               ),
             ),
           ),
+
           const Divider(height: 1),
+
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: presetQuestions.map((q) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: ElevatedButton(
+                        onPressed: () => _handleSend(prompt: q),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.grey[200],
+                          foregroundColor: Colors.black87,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        ),
+                        child: Text(q, style: const TextStyle(fontSize: 13)),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Row(
@@ -229,6 +274,7 @@ class _AiPickScreenState extends State<AiPickScreen> {
   }
 }
 
+// ✅ 클래스 바깥에 위치해야 정상 작동
 class ChatMessage {
   final String sender;
   final String text;

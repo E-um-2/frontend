@@ -28,6 +28,10 @@ class _WriteCourseScreenState extends State<WriteCourseScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Text("코스 그리기"),
+        leading: BackButton(), // ← 이건 생략해도 기본으로 뒤로가기 생김
+      ),
       body: Stack(
         children: [
           GoogleMap(
@@ -81,6 +85,7 @@ class _WriteCourseScreenState extends State<WriteCourseScreen> {
         ],
       ),
     );
+
   }
 }
 

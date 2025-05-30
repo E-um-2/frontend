@@ -110,6 +110,10 @@ Future<LatLng?> tryGeocode(String query, String apiKey) async {
 
   try {
     final response = await http.get(url);
+
+    print('[📍 Geocode 요청] $query');
+    print('[📍 응답 결과] ${response.body}');
+
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
       final results = data['results'] as List;
