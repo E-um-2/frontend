@@ -21,6 +21,8 @@ dependencies:
   path_provider: ^2.1.2
   share_plus: ^7.2.1
   intl: ^0.18.1
+  device_info_plus: ^10.0.1
+
 
 dev_dependencies:
   flutter_test:
@@ -35,9 +37,11 @@ flutter:
     - assets/bike_stations.json
     - .env
     - assets/landmarks.json
+    - assets/images/eum_logo.png
 
 flutter_icons:
   android: true
   ios: true
   image_path: "assets/images/icon.png"
+
 

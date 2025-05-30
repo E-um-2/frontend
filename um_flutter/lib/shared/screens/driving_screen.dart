@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -13,6 +14,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:image_gallery_saver_plus/image_gallery_saver_plus.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 
 class DrivingScreen extends StatefulWidget {
   const DrivingScreen({super.key});
@@ -324,22 +326,104 @@ class _DrivingScreenState extends State<DrivingScreen> {
 
   Future<Uint8List?> _captureRouteImageBytes() async {
     try {
-      RenderRepaintBoundary boundary =
-      _mapRepaintKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
+      RenderRepaintBoundary boundary = _mapRepaintKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
       final image = await boundary.toImage(pixelRatio: 3.0);
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-      return byteData?.buffer.asUint8List();
+      final originalBytes = byteData!.buffer.asUint8List();
+
+      final codec = await ui.instantiateImageCodec(originalBytes);
+      final frame = await codec.getNextFrame();
+      final ui.Image originalImage = frame.image;
+
+      // 상단 정보 바 높이
+      const double barHeight = 160;
+
+      // 로고 불러오기
+      final ui.Image logo = await _loadImageFromAsset('assets/images/eum_logo.png');
+
+      // 로고 비율 계산
+      const double logoTargetHeight = 80;
+      final double aspectRatio = logo.width / logo.height;
+      final double logoTargetWidth = logoTargetHeight * aspectRatio;
+
+      final recorder = ui.PictureRecorder();
+      final canvas = Canvas(recorder);
+      final paint = Paint();
+      final Size size = Size(originalImage.width.toDouble(), originalImage.height.toDouble());
+
+      // 흰색 바 그리기
+      canvas.drawRect(
+        Rect.fromLTWH(0, 0, size.width, barHeight),
+        Paint()..color = Colors.white.withOpacity(0.95),
+      );
+
+      // 텍스트 준비
+      final date = DateTime.now();
+      final formattedDate = "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+      final duration = _formattedTime();
+      final distance = _formattedDistance();
+      final text = "$formattedDate   /  $duration   /  $distance km";
+
+      final textPainter = TextPainter(
+        text: TextSpan(
+          text: text,
+          style: const TextStyle(
+            color: Colors.black87,
+            fontSize: 44,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      );
+      textPainter.layout(maxWidth: size.width - logoTargetWidth - 60);
+      textPainter.paint(canvas, Offset(20, (barHeight - textPainter.height) / 2));
+
+      // 로고 그리기 (오른쪽 정렬)
+      canvas.drawImageRect(
+        logo,
+        Rect.fromLTWH(0, 0, logo.width.toDouble(), logo.height.toDouble()),
+        Rect.fromLTWH(
+          size.width - logoTargetWidth - 20,
+          (barHeight - logoTargetHeight) / 2,
+          logoTargetWidth,
+          logoTargetHeight,
+        ),
+        paint,
+      );
+
+      // 지도 이미지 그리기
+      canvas.drawImage(originalImage, Offset(0, barHeight), paint);
+
+      final picture = recorder.endRecording();
+      final ui.Image finalImage = await picture.toImage(originalImage.width, originalImage.height + barHeight.toInt());
+      final finalByteData = await finalImage.toByteData(format: ui.ImageByteFormat.png);
+
+      return finalByteData?.buffer.asUint8List();
     } catch (e) {
-      print("이미지 캡처 실패: $e");
+      print("Decorated image capture failed: $e");
       return null;
     }
   }
 
-  Future<void> _saveImageToGallery(Uint8List bytes) async {
-    final status = await Permission.photos.request();
-    final storage = await Permission.storage.request();
 
-    if (!status.isGranted && !storage.isGranted) return;
+
+
+  Future<ui.Image> _loadImageFromAsset(String path) async {
+    final data = await rootBundle.load(path);
+    final codec = await ui.instantiateImageCodec(data.buffer.asUint8List());
+    final frame = await codec.getNextFrame();
+    return frame.image;
+  }
+
+
+  Future<void> _saveImageToGallery(Uint8List bytes) async {
+    final hasPermission = await _requestPermissions();
+    if (!hasPermission) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('권한이 필요합니다. 설정에서 권한을 허용해 주세요.')),
+      );
+      return;
+    }
 
     final result = await ImageGallerySaverPlus.saveImage(
       bytes,
@@ -347,7 +431,7 @@ class _DrivingScreenState extends State<DrivingScreen> {
       name: "route_${DateTime.now().millisecondsSinceEpoch}",
     );
 
-    if (result['isSuccess'] == true) {
+    if (result['isSuccess'] == true || result['filePath'] != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('갤러리에 저장되었습니다.')),
       );
@@ -358,6 +442,27 @@ class _DrivingScreenState extends State<DrivingScreen> {
     }
   }
 
+  Future<bool> _requestPermissions() async {
+    if (Platform.isAndroid) {
+      final deviceInfo = DeviceInfoPlugin();
+      final androidInfo = await deviceInfo.androidInfo;
+      final sdkInt = androidInfo.version.sdkInt;
+
+      if (sdkInt >= 33) {
+        // Android 13+ (미디어 접근 권한)
+        return await Permission.photos.request().isGranted;
+      } else {
+        // Android 12 이하 (저장소 접근 권한)
+        return await Permission.storage.request().isGranted;
+      }
+    } else if (Platform.isIOS) {
+      return await Permission.photos.request().isGranted;
+    }
+    return false;
+  }
+
+
+
   Future<String> _saveTempImage(Uint8List bytes) async {
     final directory = await getTemporaryDirectory();
     final filePath = '${directory.path}/route_${DateTime.now().millisecondsSinceEpoch}.png';
@@ -365,6 +470,32 @@ class _DrivingScreenState extends State<DrivingScreen> {
     await file.writeAsBytes(bytes);
     return file.path;
   }
+
+  String _formattedDistance() {
+    double total = 0.0;
+    for (int i = 0; i < _userPath.length - 1; i++) {
+      total += _calculateDistance(
+          _userPath[i].latitude, _userPath[i].longitude,
+          _userPath[i + 1].latitude, _userPath[i + 1].longitude
+      );
+    }
+    return (total / 1000).toStringAsFixed(2); // km 단위
+  }
+
+  double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+    const R = 6371000; // Earth radius in meters
+    final dLat = _degToRad(lat2 - lat1);
+    final dLon = _degToRad(lon2 - lon1);
+    final a = sin(dLat/2) * sin(dLat/2) +
+        cos(_degToRad(lat1)) * cos(_degToRad(lat2)) *
+            sin(dLon/2) * sin(dLon/2);
+    final c = 2 * atan2(sqrt(a), sqrt(1 - a));
+    return R * c;
+  }
+
+  double _degToRad(double deg) => deg * (pi / 180);
+
+
 
   @override
   Widget build(BuildContext context) {
