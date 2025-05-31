@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
@@ -18,6 +20,10 @@ class _WriteCourseScreenState extends State<WriteCourseScreen> {
   final List<LatLng> _tappedPoints = [];
   GoogleMapController? _mapController;
 
+  // 코스 그리기 누적 거리 관련
+  double _totalDistanceKm = 0;
+
+
   BitmapDescriptor? _customMarker; // ✅ 커스텀 마커 변수 추가
 
 
@@ -30,10 +36,6 @@ class _WriteCourseScreenState extends State<WriteCourseScreen> {
 
     // 경로그리기 마커 변화
     _loadCustomMarker(); // ✅ 이 줄 추가
-
-
-    // 선택된 위치가 있으면 그걸로, 없으면 기존 기본 위치로 설정
-    // _initialPosition;
 
     _initLocation();
   }
@@ -80,6 +82,21 @@ class _WriteCourseScreenState extends State<WriteCourseScreen> {
     });
   }
 
+  // 코스 그리기 중 누적 거리 표시 (km)
+  double _calculateDistance(LatLng start, LatLng end) {
+    const double R = 6371;
+    double dLat = (end.latitude - start.latitude) * (3.141592653589793 / 180);
+    double dLng = (end.longitude - start.longitude) * (3.141592653589793 / 180);
+    double a =
+        sin(dLat / 2) * sin(dLat / 2) +
+            cos(start.latitude * (3.141592653589793 / 180)) *
+                cos(end.latitude * (3.141592653589793 / 180)) *
+                sin(dLng / 2) * sin(dLng / 2);
+    double c = 2 * atan2(sqrt(a), sqrt(1 - a));
+    return R * c;
+  }
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -108,6 +125,11 @@ class _WriteCourseScreenState extends State<WriteCourseScreen> {
             },
             onTap: (LatLng latLng) {
               setState(() {
+                // 코스그리기 누적 거리 계산
+                if (_tappedPoints.isNotEmpty) {
+                  _totalDistanceKm += _calculateDistance(_tappedPoints.last, latLng);
+                }
+
                 _tappedPoints.add(latLng);
               });
             },
@@ -148,6 +170,35 @@ class _WriteCourseScreenState extends State<WriteCourseScreen> {
               ),
             ),
           ),
+
+          Positioned(
+            top: 16,
+            right: 16,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.9),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black26,
+                    blurRadius: 4,
+                    offset: Offset(0, 2),
+                  )
+                ],
+              ),
+              child: Text(
+                "${_totalDistanceKm.toStringAsFixed(2)} km",
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+            ),
+          ),
+
+
         ],
       ),
     );
