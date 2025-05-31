@@ -46,6 +46,7 @@ class UserDevelopedCourseModel extends CourseModel {
   final int scraps;
   final int reports;
   final bool isUploadedByUser;
+  final bool isAnyoneCompleted;
   final String authorName; // 사용자 이름
   final String createdAt; // 작성 시간
 
@@ -65,6 +66,7 @@ class UserDevelopedCourseModel extends CourseModel {
     required this.authorName,
     required this.createdAt,
     super.completedColor,
+    required this.isAnyoneCompleted,
   });
 }
 

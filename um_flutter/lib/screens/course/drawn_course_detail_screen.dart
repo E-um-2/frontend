@@ -52,6 +52,7 @@ class _DrawnCourseDetailScreenState extends State<DrawnCourseDetailScreen> {
       isUploadedByUser: true,
       authorName: '익명',
       createdAt: '05/28 14:00',
+      isAnyoneCompleted: false,
     );
 
     setState(() {

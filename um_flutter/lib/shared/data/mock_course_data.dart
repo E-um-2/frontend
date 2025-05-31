@@ -10,13 +10,13 @@ final List<UserDevelopedCourseModel> mockUserDevelopedCourses = [
     duration: '2시간 10분',
     imageUrl: 'assets/images/course1.png',
     isCompleted: true,
+    isAnyoneCompleted: true, // ✅ 추가
     completedColor: Color(0xFF38CCBE),
     likes: 41,
     scraps: 10,
     reports: 0,
     isUploadedByUser: true,
-    description:
-        '언덕이 높은 곳이 좀 있긴 한데 할만한 코스예요!ㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇddddddddddddddddㅇdㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇ',
+    description: '언덕이 높은 곳이 좀 있긴 한데 할만한 코스예요!',
     authorName: '재웅',
     createdAt: '05/20 13:22',
   ),
@@ -28,6 +28,7 @@ final List<UserDevelopedCourseModel> mockUserDevelopedCourses = [
     duration: '1시간 50분',
     imageUrl: 'assets/images/course2.png',
     isCompleted: false,
+    isAnyoneCompleted: false, // ✅ 추가
     completedColor: Color(0xFF38CCBE),
     likes: 22,
     scraps: 6,
@@ -45,6 +46,7 @@ final List<UserDevelopedCourseModel> mockUserDevelopedCourses = [
     duration: '2시간 30분',
     imageUrl: 'assets/images/course3.png',
     isCompleted: true,
+    isAnyoneCompleted: true, // ✅ 추가
     completedColor: Color(0xFF38CCBE),
     likes: 18,
     scraps: 7,
