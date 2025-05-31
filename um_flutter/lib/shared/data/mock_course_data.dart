@@ -4,7 +4,7 @@ import '../../models/course_model.dart';
 final List<UserDevelopedCourseModel> mockUserDevelopedCourses = [
   UserDevelopedCourseModel(
     id: 'u1',
-    title: '사람 옆모습',
+    title: '너구리',
     location: '인천 청라 부근',
     distance: '20km',
     duration: '2시간 10분',
@@ -22,7 +22,7 @@ final List<UserDevelopedCourseModel> mockUserDevelopedCourses = [
   ),
   UserDevelopedCourseModel(
     id: 'u2',
-    title: '정사각형 경로',
+    title: '카피바라',
     location: '인천 문학산 부근',
     distance: '18km',
     duration: '1시간 50분',
@@ -39,7 +39,7 @@ final List<UserDevelopedCourseModel> mockUserDevelopedCourses = [
   ),
   UserDevelopedCourseModel(
     id: 'u3',
-    title: '강아지 경로',
+    title: '정사각형의 미학',
     location: '인천 송도 부근',
     distance: '24km',
     duration: '2시간 30분',
@@ -59,7 +59,7 @@ final List<UserDevelopedCourseModel> mockUserDevelopedCourses = [
 final List<DrawnCourseModel> mockDrawnCourses = [
   DrawnCourseModel(
     id: 's1',
-    title: '사람 옆모습',
+    title: '너구리',
     location: '인천 청라 부근',
     distance: '20km',
     duration: '2시간 10분',
@@ -70,7 +70,7 @@ final List<DrawnCourseModel> mockDrawnCourses = [
   ),
   DrawnCourseModel(
     id: 's2',
-    title: '정사각형 경로',
+    title: '키피바라',
     location: '인천 문학산 부근',
     distance: '22km',
     duration: '2시간 20분',

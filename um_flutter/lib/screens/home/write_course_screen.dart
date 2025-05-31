@@ -54,7 +54,7 @@ class _WriteCourseScreenState extends State<WriteCourseScreen> {
       body: Stack(
         children: [
           GoogleMap(
-            zoomControlsEnabled: false, // 맵 + - 줌 비활성화
+            zoomControlsEnabled: true, // 맵 + - 줌 비활성화
             mapToolbarEnabled: false, // 마커 눌렀을때 네비게이션 길찾기 등 하단에 뜨는것 비활성화
             initialCameraPosition: CameraPosition(
               target: _initialPosition,
