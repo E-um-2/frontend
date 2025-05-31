@@ -1,14 +1,25 @@
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:location/location.dart';
 
 import '../course/course_info_input_screen.dart';
 
-import 'package:location/location.dart';
-
 class WriteCourseScreen extends StatefulWidget {
-  final LatLng? initialPosition; // 선택된 장소 좌표 (옵셔널)
+  final LatLng? initialPosition;
+  final bool fromAi;
+  final List<LatLng>? aiPlaces;
+  final List<String>? aiPlaceNames;
 
-  const WriteCourseScreen({super.key, this.initialPosition});
+  const WriteCourseScreen({
+    super.key,
+    this.initialPosition,
+    this.fromAi = false,
+    this.aiPlaces,
+    this.aiPlaceNames,
+  });
 
   @override
   State<WriteCourseScreen> createState() => _WriteCourseScreenState();
@@ -18,30 +29,70 @@ class _WriteCourseScreenState extends State<WriteCourseScreen> {
   final List<LatLng> _tappedPoints = [];
   GoogleMapController? _mapController;
 
-  BitmapDescriptor? _customMarker; // ✅ 커스텀 마커 변수 추가
-
+  BitmapDescriptor? _customMarker;
+  BitmapDescriptor? _aiMarker;
+  Set<Marker> _aiMarkers = {};
 
   late LatLng _initialPosition;
-  bool _isLocationReady = false; // 현재 위치 세팅 완료 여부
+  bool _isLocationReady = false;
+  bool _aiMarkersReady = false;
 
   @override
   void initState() {
     super.initState();
-
-    // 경로그리기 마커 변화
-    _loadCustomMarker(); // ✅ 이 줄 추가
-
-
-    // 선택된 위치가 있으면 그걸로, 없으면 기존 기본 위치로 설정
-    // _initialPosition;
-
+    _loadCustomMarkerAndAiMarkers();
     _initLocation();
   }
 
+  Future<BitmapDescriptor> getResizedMarker(String assetPath, int width) async {
+    final ByteData byteData = await rootBundle.load(assetPath);
+    final codec = await ui.instantiateImageCodec(
+      byteData.buffer.asUint8List(),
+      targetWidth: width,
+    );
+    final frame = await codec.getNextFrame();
+    final resized = await frame.image.toByteData(format: ui.ImageByteFormat.png);
+    return BitmapDescriptor.fromBytes(resized!.buffer.asUint8List());
+  }
 
-  // ✅ [추가] 현재 위치를 가져와서 _initialPosition에 설정
+  void _loadCustomMarkerAndAiMarkers() async {
+    try {
+      final descriptor = await getResizedMarker('assets/images/blue_ring_marker.png', 80);
+      debugPrint("✅ blue_ring_marker 로드 성공");
+
+      final aiIcon = await getResizedMarker('assets/images/red_pin_marker.png', 150);
+      debugPrint("✅ red_pin_marker 로드 성공");
+
+      if (!mounted) return;
+
+      setState(() {
+        _customMarker = descriptor;
+        _aiMarker = aiIcon;
+        _aiMarkersReady = true;
+
+        if (widget.fromAi && widget.aiPlaces != null) {
+          _aiMarkers = widget.aiPlaces!.asMap().entries.map((entry) {
+            final index = entry.key;
+            final latLng = entry.value;
+            final title = (widget.aiPlaceNames != null && widget.aiPlaceNames!.length > index)
+                ? widget.aiPlaceNames![index]
+                : "추천 장소";
+            return Marker(
+              markerId: MarkerId("ai_${latLng.latitude}_${latLng.longitude}"),
+              position: latLng,
+              icon: _aiMarker!,
+              infoWindow: InfoWindow(title: title),
+            );
+          }).toSet();
+          debugPrint("✅ AI 마커 생성 완료: ${_aiMarkers.length}개");
+        }
+      });
+    } catch (e) {
+      debugPrint("❌ 마커 이미지 로딩 실패: $e");
+    }
+  }
+
   Future<void> _initLocation() async {
-
     try {
       Location location = Location();
 
@@ -61,7 +112,7 @@ class _WriteCourseScreenState extends State<WriteCourseScreen> {
 
       if (!mounted) return;
       setState(() {
-        _initialPosition = LatLng(currentLocation.latitude!, currentLocation.longitude!);
+        _initialPosition = widget.initialPosition ?? LatLng(currentLocation.latitude!, currentLocation.longitude!);
         _isLocationReady = true;
       });
     } catch (e) {
@@ -69,17 +120,14 @@ class _WriteCourseScreenState extends State<WriteCourseScreen> {
     }
   }
 
-
-  void _loadCustomMarker() async {
-    final descriptor = await BitmapDescriptor.fromAssetImage(
-      const ImageConfiguration(size: Size(48, 48)),
-      'assets/images/blue_ring_marker.png', // ✅ 경로는 pubspec.yaml에 등록된 대로
+  LatLngBounds _boundsFromLatLngs(List<LatLng> latLngList) {
+    final latitudes = latLngList.map((p) => p.latitude);
+    final longitudes = latLngList.map((p) => p.longitude);
+    return LatLngBounds(
+      southwest: LatLng(latitudes.reduce((a, b) => a < b ? a : b), longitudes.reduce((a, b) => a < b ? a : b)),
+      northeast: LatLng(latitudes.reduce((a, b) => a > b ? a : b), longitudes.reduce((a, b) => a > b ? a : b)),
     );
-    setState(() {
-      _customMarker = descriptor;
-    });
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -89,19 +137,30 @@ class _WriteCourseScreenState extends State<WriteCourseScreen> {
       );
     }
 
+    final Set<Marker> userMarkers = _tappedPoints.map((point) {
+      return Marker(
+        markerId: MarkerId(point.toString()),
+        position: point,
+        icon: _customMarker ?? BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
+        anchor: const Offset(0.5, 0.5),
+      );
+    }).toSet();
+
+    final Set<Marker> allMarkers = {..._aiMarkers, ...userMarkers};
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("코스 그리기"),
-        leading: BackButton(), // ← 이건 생략해도 기본으로 뒤로가기 생김
+        leading: const BackButton(),
       ),
       body: Stack(
         children: [
           GoogleMap(
-            zoomControlsEnabled: false, // 맵 + - 줌 비활성화
-            mapToolbarEnabled: false, // 마커 눌렀을때 네비게이션 길찾기 등 하단에 뜨는것 비활성화
+            zoomControlsEnabled: true,
+            mapToolbarEnabled: false,
             initialCameraPosition: CameraPosition(
               target: _initialPosition,
-              zoom: 15,
+              zoom: 16,
             ),
             onMapCreated: (controller) {
               _mapController = controller;
@@ -111,14 +170,7 @@ class _WriteCourseScreenState extends State<WriteCourseScreen> {
                 _tappedPoints.add(latLng);
               });
             },
-            markers: _tappedPoints.map((point) {
-              return Marker(
-                markerId: MarkerId(point.toString()),
-                position: point,
-                icon: _customMarker ?? BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure), // 파란색 마커
-                anchor: Offset(0.5, 0.5),
-              );
-            }).toSet(),
+            markers: allMarkers,
             polylines: {
               Polyline(
                 polylineId: const PolylineId('user_path'),
@@ -151,7 +203,6 @@ class _WriteCourseScreenState extends State<WriteCourseScreen> {
         ],
       ),
     );
-
   }
 }
 
@@ -171,7 +222,7 @@ void _showCourseInfoBottomSheet(BuildContext context, List<LatLng> pathPoints) {
           const SizedBox(height: 20),
           ElevatedButton(
             onPressed: () {
-              Navigator.pop(context); // BottomSheet 닫기
+              Navigator.pop(context);
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -184,7 +235,7 @@ void _showCourseInfoBottomSheet(BuildContext context, List<LatLng> pathPoints) {
               padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 14),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
-            child: const Text("내 코스로 이동",style: TextStyle(color: Colors.white),),
+            child: const Text("내 코스로 이동", style: TextStyle(color: Colors.white)),
           ),
         ],
       ),

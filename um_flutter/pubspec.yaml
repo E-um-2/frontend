@@ -38,7 +38,8 @@ flutter:
     - .env
     - assets/landmarks.json
     - assets/images/eum_logo.png
-
+    - assets/images/red_pin_marker.png
+    - assets/images/blue_ring_marker.png
 flutter_icons:
   android: true
   ios: true

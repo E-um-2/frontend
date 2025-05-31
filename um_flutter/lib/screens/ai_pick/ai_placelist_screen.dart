@@ -23,7 +23,7 @@ class AiPlaceListScreen extends StatelessWidget {
             title: Text(place),
             trailing: const Icon(Icons.arrow_forward_ios),
             onTap: () async {
-              await geocodePlaceAndNavigate(context, place);
+              await geocodeAllPlacesAndNavigate(context, selectedPlace: place);
             },
           );
         },
@@ -31,67 +31,73 @@ class AiPlaceListScreen extends StatelessWidget {
     );
   }
 
-  Future<void> geocodePlaceAndNavigate(BuildContext context, String placeName) async {
-    final apiKey = dotenv.env['GOOGLE_MAPS_API_KEY'];
-    if (apiKey == null) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("API 키가 설정되지 않았습니다.")),
-      );
-      return;
-    }
-
-    final cleaned = cleanPlaceName(placeName);
-
-    List<String> queries = [
-      "$cleaned, 인천",
-      cleaned,
-      placeName.split(' ').first + " 인천",
-    ];
-
-    LatLng? coord;
-    for (final query in queries) {
-      coord = await tryGeocode(query, apiKey);
-      if (coord != null) break;
-    }
-
+Future<void> geocodeAllPlacesAndNavigate(BuildContext context, {required String selectedPlace}) async {
+  final apiKey = dotenv.env['GOOGLE_MAPS_API_KEY'];
+  if (apiKey == null) {
     if (!context.mounted) return;
-
-    if (coord != null) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => WriteCourseScreen(initialPosition: coord),
-        ),
-      );
-    } else {
-      showDialog(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: const Text("위치 검색 실패"),
-          content: Text("‘$placeName’의 위치를 찾을 수 없습니다.\n지도로 직접 코스를 그리시겠어요?"),
-          actions: [
-            TextButton(
-              child: const Text("직접 그리기"),
-              onPressed: () {
-                Navigator.pop(dialogContext);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const WriteCourseScreen(),
-                  ),
-                );
-              },
-            ),
-            TextButton(
-              child: const Text("취소"),
-              onPressed: () => Navigator.pop(dialogContext),
-            )
-          ],
-        ),
-      );
-    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("API 키가 설정되지 않았습니다.")),
+    );
+    return;
   }
+
+  final cleaned = cleanPlaceName(selectedPlace);
+  List<String> queries = [
+    "$cleaned, 인천",
+    cleaned,
+    selectedPlace.split(' ').first + " 인천",
+  ];
+
+  LatLng? coord;
+  for (final query in queries) {
+    coord = await tryGeocode(query, apiKey);
+    if (coord != null) break;
+  }
+
+  if (!context.mounted) return;
+
+  if (coord != null) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => WriteCourseScreen(
+          initialPosition: coord!,
+          fromAi: true,
+          aiPlaces: [coord!],
+          aiPlaceNames: [selectedPlace],
+        ),
+      ),
+    );
+
+  } else {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text("위치 검색 실패"),
+        content: Text("‘$selectedPlace’의 위치를 찾을 수 없습니다.\n지도로 직접 코스를 그리시겠어요?"),
+        actions: [
+          TextButton(
+            child: const Text("직접 그리기"),
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const WriteCourseScreen(),
+                ),
+              );
+            },
+          ),
+          TextButton(
+            child: const Text("취소"),
+            onPressed: () => Navigator.pop(dialogContext),
+          )
+        ],
+      ),
+    );
+  }
+}
+
 }
 
 String cleanPlaceName(String raw) {
