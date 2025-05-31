@@ -16,14 +16,33 @@ class _WriteCourseScreenState extends State<WriteCourseScreen> {
   final List<LatLng> _tappedPoints = [];
   GoogleMapController? _mapController;
 
+  BitmapDescriptor? _customMarker; // ✅ 커스텀 마커 변수 추가
+
+
   late LatLng _initialPosition;
 
   @override
   void initState() {
     super.initState();
+
+    // 경로그리기 마커 변화
+    _loadCustomMarker(); // ✅ 이 줄 추가
+
+
     // 선택된 위치가 있으면 그걸로, 없으면 기존 기본 위치로 설정
     _initialPosition = widget.initialPosition ?? LatLng(37.37431713137547, 126.63386945666375);
   }
+
+  void _loadCustomMarker() async {
+    final descriptor = await BitmapDescriptor.fromAssetImage(
+      const ImageConfiguration(size: Size(48, 48)),
+      'assets/images/blue_ring_marker.png', // ✅ 경로는 pubspec.yaml에 등록된 대로
+    );
+    setState(() {
+      _customMarker = descriptor;
+    });
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -47,6 +66,8 @@ class _WriteCourseScreenState extends State<WriteCourseScreen> {
               return Marker(
                 markerId: MarkerId(point.toString()),
                 position: point,
+                icon: _customMarker ?? BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure), // 파란색 마커
+                anchor: Offset(0.5, 0.5),
               );
             }).toSet(),
             polylines: {
