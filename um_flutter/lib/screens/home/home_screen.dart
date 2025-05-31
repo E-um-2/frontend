@@ -230,8 +230,8 @@ class _HomeScreenState extends State<HomeScreen> {
               _controller.complete(controller);
             },
             markers: _visibleMarkers,
-            zoomControlsEnabled: true,
-            mapToolbarEnabled: false,
+            zoomControlsEnabled: false, // 맵 + - 줌 비활성화
+            mapToolbarEnabled: false, // 마커 눌렀을때 네비게이션 길찾기 등 하단에 뜨는것 비활성화
           ),
           Positioned(
             right: 16,
