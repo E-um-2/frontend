@@ -55,7 +55,7 @@ final GoRouter router = GoRouter(
           path: '/course',
           builder: (context, state) => const CourseScreen(),
         ),
-        GoRoute(path: '/ai', builder: (context, state) => const AiChatScreen()),
+        GoRoute(path: '/ai',builder: (context, state) => AiPickScreen()),
         GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
         GoRoute(
           path: '/explore',
