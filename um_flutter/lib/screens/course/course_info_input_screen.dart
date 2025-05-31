@@ -116,7 +116,7 @@ class _CourseInfoInputScreenState extends State<CourseInfoInputScreen> {
                       backgroundColor: Colors.blue,
                       minimumSize: const Size.fromHeight(50),
                     ),
-                    child: const Text("저장하기"),
+                    child: const Text("저장하기",style: TextStyle(color: Colors.white),),
                   ),
                 ],
               ),
