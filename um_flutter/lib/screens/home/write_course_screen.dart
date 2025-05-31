@@ -3,6 +3,8 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../course/course_info_input_screen.dart';
 
+import 'package:location/location.dart';
+
 class WriteCourseScreen extends StatefulWidget {
   final LatLng? initialPosition; // 선택된 장소 좌표 (옵셔널)
 
@@ -20,6 +22,7 @@ class _WriteCourseScreenState extends State<WriteCourseScreen> {
 
 
   late LatLng _initialPosition;
+  bool _isLocationReady = false; // 현재 위치 세팅 완료 여부
 
   @override
   void initState() {
@@ -30,8 +33,42 @@ class _WriteCourseScreenState extends State<WriteCourseScreen> {
 
 
     // 선택된 위치가 있으면 그걸로, 없으면 기존 기본 위치로 설정
-    _initialPosition = widget.initialPosition ?? LatLng(37.37431713137547, 126.63386945666375);
+    // _initialPosition;
+
+    _initLocation();
   }
+
+
+  // ✅ [추가] 현재 위치를 가져와서 _initialPosition에 설정
+  Future<void> _initLocation() async {
+
+    try {
+      Location location = Location();
+
+      bool serviceEnabled = await location.serviceEnabled();
+      if (!serviceEnabled) {
+        serviceEnabled = await location.requestService();
+        if (!serviceEnabled) return;
+      }
+
+      PermissionStatus permissionGranted = await location.hasPermission();
+      if (permissionGranted == PermissionStatus.denied) {
+        permissionGranted = await location.requestPermission();
+        if (permissionGranted != PermissionStatus.granted) return;
+      }
+
+      final currentLocation = await location.getLocation();
+
+      if (!mounted) return;
+      setState(() {
+        _initialPosition = LatLng(currentLocation.latitude!, currentLocation.longitude!);
+        _isLocationReady = true;
+      });
+    } catch (e) {
+      debugPrint('🚫 위치 초기화 실패: $e');
+    }
+  }
+
 
   void _loadCustomMarker() async {
     final descriptor = await BitmapDescriptor.fromAssetImage(
@@ -46,6 +83,12 @@ class _WriteCourseScreenState extends State<WriteCourseScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_isLocationReady) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("코스 그리기"),
@@ -101,7 +144,7 @@ class _WriteCourseScreenState extends State<WriteCourseScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 14),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
-                child: const Text("다음으로", style: TextStyle(fontSize: 16)),
+                child: const Text("다음으로", style: TextStyle(fontSize: 16, color: Colors.white)),
               ),
             ),
           ),
@@ -141,7 +184,7 @@ void _showCourseInfoBottomSheet(BuildContext context, List<LatLng> pathPoints) {
               padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 14),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
-            child: const Text("내 코스로 이동"),
+            child: const Text("내 코스로 이동",style: TextStyle(color: Colors.white),),
           ),
         ],
       ),
