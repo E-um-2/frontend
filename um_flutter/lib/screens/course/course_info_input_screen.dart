@@ -39,6 +39,23 @@ class _CourseInfoInputScreenState extends State<CourseInfoInputScreen> {
   final TextEditingController timeController = TextEditingController();
   final TextEditingController descController = TextEditingController();
 
+  late BitmapDescriptor _customMarkerIcon; // 커스텀 마커 사용 (파란 점)
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCustomMarker(); // ✅ 추가
+  }
+
+  void _loadCustomMarker() async {
+    _customMarkerIcon = await BitmapDescriptor.fromAssetImage(
+      const ImageConfiguration(size: Size(48, 48)), // 마커 이미지 크기
+      'assets/images/blue_ring_marker.png',
+    );
+    setState(() {}); // 마커 적용을 위한 리렌더링
+  }
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -62,8 +79,12 @@ class _CourseInfoInputScreenState extends State<CourseInfoInputScreen> {
                 )
               },
               markers: widget.pathPoints
-                  .map((e) => Marker(markerId: MarkerId(e.toString()), position: e))
-                  .toSet(),
+                  .map((e) => Marker(
+                  markerId: MarkerId(e.toString()),
+                  position: e,
+                  icon: _customMarkerIcon,
+                  anchor: const Offset(0.5, 0.5)
+              )).toSet(),
             ),
           ),
 
@@ -116,7 +137,7 @@ class _CourseInfoInputScreenState extends State<CourseInfoInputScreen> {
                       backgroundColor: Colors.blue,
                       minimumSize: const Size.fromHeight(50),
                     ),
-                    child: const Text("저장하기"),
+                    child: const Text("저장하기",style: TextStyle(color: Colors.white),),
                   ),
                 ],
               ),

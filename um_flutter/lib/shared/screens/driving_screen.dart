@@ -266,10 +266,34 @@ class _DrivingScreenState extends State<DrivingScreen> {
         _userPath.add(point);
         _currentPosition = point;
       });
+
+      // 여기가 핵심: 주행 중에는 자동으로 카메라가 위치를 따라감
       if (_isCameraLocked) {
-        _mapController.animateCamera(CameraUpdate.newLatLng(point));
+        double bearing = 0;
+
+        if (_userPath.length >= 2) {
+          final prev = _userPath[_userPath.length - 2];
+          final curr = _userPath.last;
+
+          bearing = _calculateBearing(
+            prev.latitude, prev.longitude,
+            curr.latitude, curr.longitude,
+          );
+        }
+
+        _mapController.animateCamera(
+          CameraUpdate.newCameraPosition(
+            CameraPosition(
+              target: point,
+              zoom: 16,
+              bearing: bearing,
+              tilt: 45,
+            ),
+          ),
+        );
       }
     });
+
 
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       setState(() => _elapsedSeconds++);
@@ -462,7 +486,6 @@ class _DrivingScreenState extends State<DrivingScreen> {
   }
 
 
-
   Future<String> _saveTempImage(Uint8List bytes) async {
     final directory = await getTemporaryDirectory();
     final filePath = '${directory.path}/route_${DateTime.now().millisecondsSinceEpoch}.png';
@@ -495,6 +518,22 @@ class _DrivingScreenState extends State<DrivingScreen> {
 
   double _degToRad(double deg) => deg * (pi / 180);
 
+  double _calculateBearing(double lat1, double lon1, double lat2, double lon2) {
+    final radLat1 = _degToRad(lat1);
+    final radLat2 = _degToRad(lat2);
+    final deltaLon = _degToRad(lon2 - lon1);
+
+    final y = sin(deltaLon) * cos(radLat2);
+    final x = cos(radLat1) * sin(radLat2) -
+        sin(radLat1) * cos(radLat2) * cos(deltaLon);
+
+    final theta = atan2(y, x);
+    return (_radToDeg(theta) + 360) % 360;
+  }
+
+
+  double _radToDeg(double rad) => rad * (180 / pi);
+
 
 
   @override
@@ -507,6 +546,8 @@ class _DrivingScreenState extends State<DrivingScreen> {
         child: Stack(
           children: [
             GoogleMap(
+              zoomControlsEnabled: true, // 맵 + - 줌 비활성화
+              mapToolbarEnabled: false, // 마커 눌렀을때 네비게이션 길찾기 등 하단에 뜨는것 비활성화
               initialCameraPosition: CameraPosition(
                 target: _currentPosition!,
                 zoom: 16,
@@ -515,7 +556,11 @@ class _DrivingScreenState extends State<DrivingScreen> {
                 _controller.complete(controller);
                 _mapController = controller;
               },
-              onCameraMoveStarted: () => _isCameraLocked = false,
+              onCameraMoveStarted: () {
+                if (!_isRiding) {
+                  _isCameraLocked = false;
+                }
+              },
               myLocationEnabled: !_isCapturingImage,
               myLocationButtonEnabled: false,
               markers: _isCapturingImage ? {} : _visibleMarkers,
@@ -590,6 +635,34 @@ class _DrivingScreenState extends State<DrivingScreen> {
                 bottom: 250,
                 child: Column(
                   children: [
+                    // 카메라 잠금 버튼
+                    FloatingActionButton(
+                      heroTag: 'toggleCameraLock',
+                      mini: true,
+                      backgroundColor: Colors.white,
+                      onPressed: () {
+                        setState(() {
+                          _isCameraLocked = !_isCameraLocked;
+                        });
+
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              _isCameraLocked ? '카메라 따라가기: ON' : '카메라 따라가기: OFF',
+                            ),
+                            duration: const Duration(seconds: 1),
+                          ),
+                        );
+                      },
+                      shape: const CircleBorder(),
+                      child: Icon(
+                        _isCameraLocked ? Icons.lock : Icons.lock_open,
+                        color: _isCameraLocked ? Colors.blue : Colors.grey,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+
+                    // 자전거 거치소
                     FloatingActionButton(
                       heroTag: 'toggleBike',
                       mini: true,
@@ -599,6 +672,8 @@ class _DrivingScreenState extends State<DrivingScreen> {
                       child: Icon(Icons.pedal_bike, color: _showBikeStations ? Colors.blue : Colors.grey),
                     ),
                     const SizedBox(height: 8),
+
+                    // 랜드마크
                     FloatingActionButton(
                       heroTag: 'toggleLandmark',
                       mini: true,
@@ -608,6 +683,8 @@ class _DrivingScreenState extends State<DrivingScreen> {
                       child: Icon(Icons.account_balance, color: _showLandmarks ? Colors.green : Colors.grey),
                     ),
                     const SizedBox(height: 8),
+
+                    // 현재 위치 이동
                     FloatingActionButton(
                       heroTag: 'locationButton',
                       mini: true,
