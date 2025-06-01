@@ -7,7 +7,7 @@ import 'dart:convert';
 import 'package:um_test/screens/home/write_course_screen.dart';
 
 class AiPlaceListScreen extends StatelessWidget {
-  final List<String> places;
+  final List<Map<String, String>> places;
 
   const AiPlaceListScreen({super.key, required this.places});
 
@@ -22,9 +22,8 @@ class AiPlaceListScreen extends StatelessWidget {
         itemCount: places.length,
         itemBuilder: (context, index) {
           final place = places[index];
-          final parsed = parseTitleAndDescription(place);
-          final title = parsed['title']!;
-          final description = parsed['description']!;
+          final title = place['title'] ?? '';
+          final description = place['description'] ?? '';
 
           return Card(
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -44,9 +43,9 @@ class AiPlaceListScreen extends StatelessWidget {
               ),
               trailing: const Icon(Icons.arrow_forward_ios, size: 16),
               onTap: () async {
-                await geocodeAllPlacesAndNavigate(
+                await geocodeAndNavigateToPlace(
                   context,
-                  selectedPlace: title, // 제목만 검색에 활용
+                  selectedPlace: title,
                 );
               },
             ),
@@ -56,7 +55,7 @@ class AiPlaceListScreen extends StatelessWidget {
     );
   }
 
-  Future<void> geocodeAllPlacesAndNavigate(BuildContext context, {required String selectedPlace}) async {
+  Future<void> geocodeAndNavigateToPlace(BuildContext context, {required String selectedPlace}) async {
     final apiKey = dotenv.env['GOOGLE_MAPS_API_KEY'];
     if (apiKey == null) {
       if (!context.mounted) return;
@@ -67,10 +66,10 @@ class AiPlaceListScreen extends StatelessWidget {
     }
 
     final cleaned = cleanPlaceName(selectedPlace);
-    List<String> queries = [
+    final queries = [
       "$cleaned, 인천",
       cleaned,
-      selectedPlace.split(' ').first + " 인천",
+      selectedPlace,
     ];
 
     LatLng? coord;
@@ -86,7 +85,7 @@ class AiPlaceListScreen extends StatelessWidget {
         context,
         MaterialPageRoute(
           builder: (_) => WriteCourseScreen(
-            initialPosition: coord!,
+            initialPosition: coord,
             fromAi: true,
             aiPlaces: [coord!],
             aiPlaceNames: [selectedPlace],
@@ -122,26 +121,10 @@ class AiPlaceListScreen extends StatelessWidget {
     }
   }
 
-  Map<String, String> parseTitleAndDescription(String raw) {
-    final lines = raw.trim().split('\n');
-    if (lines.isEmpty) return {'title': raw, 'description': ''};
-
-    final titleLine = lines.first.trim();
-    final descriptionLines = lines.skip(1).join('\n').trim();
-
-    return {
-      'title': titleLine,
-      'description': descriptionLines,
-    };
-  }
-
-
   String cleanPlaceName(String raw) {
     return raw
-        .replaceAll(RegExp(r'^[0-9]+\.?\s*'), '') // 숫자 제거
-        .replaceAll(RegExp(r'(자전거\s*)?(도로|코스|길|경로|여행지)?'), '')
-        .replaceAll(RegExp(r'[^\w\s가-힣()]'), '')
-        .replaceAll(RegExp(r'\s+'), ' ')
+        .replaceAll(RegExp(r'[0-9]+\.'), '')
+        .replaceAll(RegExp(r'[🚲📍🌊🏞️☕🎨]+'), '')
         .trim();
   }
 

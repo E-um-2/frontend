@@ -57,6 +57,8 @@ class _AiChatScreenState extends State<AiChatScreen> {
     });
   }
 
+
+
   Future<String> getOpenRouterReply(String input) async {
     final apiKey = dotenv.env['OPENROUTER_API_KEY'];
     if (apiKey == null || apiKey.isEmpty) {
@@ -76,10 +78,30 @@ class _AiChatScreenState extends State<AiChatScreen> {
       'messages': [
         {
           'role': 'system',
-          'content': '''
-당신은 인천 지역 여행만 전문으로 추천하는 AI입니다.
+          'content':
+          '''
+너는 ‘이음이’라는 자전거 관광 추천 앱의 인공지능이야. 말투는 정중하게 해야 해.
 
-[생략: system message 생략]'''
+사용자가 지역을 언급하면, 반드시 해당 지역(예: 인천, 계양구, 송도, 청라, 월미도, 영종도 등)에 실제로 존재하는 장소만 추천해줘.
+
+- 해당 지역이 맞으면 자신 있게 추천해도 좋아.
+- 해당 지역에 3곳 미만이어도 괜찮아. 부족하다고 말하지 말고, 있는 만큼 정성껏 추천해줘.
+
+**오직 아래 형식으로만 출력해. 서두나 끝 인사 없이, 숫자 + 장소명 + 줄바꿈 + 설명 형식만 그대로 지켜서 출력해. 형식을 절대 변형하지 마.**
+
+1. 장소명  
+설명 (2~3줄, 자연스럽고 설득력 있게, 이모지 섞어 보기 좋게)
+
+2. 장소명  
+설명
+
+3. 장소명  
+설명
+
+- 🚲 📍 🌊 🏞️ ☕ 등 이모지를 자연스럽게 활용  
+- 장소 이름은 따옴표도, 볼드체도 사용하지 말고 일반 텍스트로만 써줘
+
+          '''
         },
         ..._messages.map((m) =>
         {
@@ -104,27 +126,30 @@ class _AiChatScreenState extends State<AiChatScreen> {
     }
   }
 
-  List<String> extractPlaces(String aiReply) {
-    final lines = aiReply.split('\n');
-    final List<String> places = [];
+  List<Map<String, String>> extractPlaces(String aiReply) {
+    final lines = aiReply.trim().split('\n');
+    final List<Map<String, String>> results = [];
 
-    for (var line in lines) {
-      var text = line.trim();
-      if (text.isEmpty || text.length < 3) continue;
-      if (text.contains("여행되세요") || text.contains("즐기세요") ||
-          text.contains("감사합니다")) continue;
-      if (!RegExp(r'^\d+\.\s').hasMatch(text)) continue;
+    for (int i = 0; i < lines.length - 1; i++) {
+      final titleLine = lines[i].trim();
+      final descLine = lines[i + 1].trim();
 
-      text = text.replaceAll(RegExp(r'[^\w\s가-힣()\-]'), '');
+      if (!RegExp(r'^\d+\.\s+').hasMatch(titleLine)) continue;
+      final title = titleLine.replaceFirst(RegExp(r'^\d+\.\s*'), '').trim();
 
-      final cleaned = text.replaceFirst(RegExp(r'^\d+\.\s*'), '').trim();
-      if (cleaned.length < 3) continue;
+      if (title.isEmpty || descLine.isEmpty) continue;
 
-      places.add(cleaned);
+      results.add({
+        'title': title,
+        'description': descLine,
+      });
+
+      i++; // 다음 라인은 이미 description으로 썼으니 skip
     }
 
-    return places;
+    return results;
   }
+
 
   String getButtonLabel(String question) {
     if (question.contains("맛집")) return "🍽️ 맛집 위치 지도에서 보기";

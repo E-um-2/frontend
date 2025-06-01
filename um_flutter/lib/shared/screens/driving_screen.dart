@@ -546,7 +546,7 @@ class _DrivingScreenState extends State<DrivingScreen> {
         child: Stack(
           children: [
             GoogleMap(
-              zoomControlsEnabled: true, // 맵 + - 줌 비활성화
+              zoomControlsEnabled: false, // 맵 + - 줌 비활성화
               mapToolbarEnabled: false, // 마커 눌렀을때 네비게이션 길찾기 등 하단에 뜨는것 비활성화
               initialCameraPosition: CameraPosition(
                 target: _currentPosition!,

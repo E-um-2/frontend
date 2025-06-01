@@ -160,7 +160,7 @@ class _WriteCourseScreenState extends State<WriteCourseScreen> {
       body: Stack(
         children: [
           GoogleMap(
-            zoomControlsEnabled: true,
+            zoomControlsEnabled: false,
             mapToolbarEnabled: false,
             initialCameraPosition: CameraPosition(
               target: _initialPosition,

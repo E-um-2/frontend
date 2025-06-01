@@ -29,12 +29,17 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
 
-     if (Platform.isAndroid || Platform.isIOS) {
-        _initLocation(); // ✅ 모바일에서만 위치 초기화
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (Platform.isAndroid || Platform.isIOS) {
+        _initLocation(); // ✅ 플랫폼 채널이 연결된 이후에 실행
       }
       _loadBikeStations();
       _loadLandmarkMarkers();
+    });
   }
+
+
+
 
   Future<void> _initLocation() async {
     try {
@@ -230,7 +235,7 @@ class _HomeScreenState extends State<HomeScreen> {
               _controller.complete(controller);
             },
             markers: _visibleMarkers,
-            zoomControlsEnabled: true, // 맵 + - 줌 비활성화
+            zoomControlsEnabled: false, // 맵 + - 줌 비활성화
             mapToolbarEnabled: false, // 마커 눌렀을때 네비게이션 길찾기 등 하단에 뜨는것 비활성화
           ),
           Positioned(

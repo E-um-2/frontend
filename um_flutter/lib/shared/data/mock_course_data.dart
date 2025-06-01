@@ -45,11 +45,11 @@ final List<UserDevelopedCourseModel> mockUserDevelopedCourses = [
     distance: '1.6km',
     duration: '15분',
     imageUrl: 'assets/images/course3.png',
-    isCompleted: true,
-    isAnyoneCompleted: true, // ✅ 추가
+    isCompleted: false,
+    isAnyoneCompleted: false, // ✅ 추가
     completedColor: Color(0xFF38CCBE),
-    likes: 18,
-    scraps: 7,
+    likes: 0,
+    scraps: 0,
     reports: 0,
     isUploadedByUser: true,
     description: '기하학적인 아름다움에 도전했어요.\n인천대 캠퍼스를 사각형으로 감싸듯 정확하게 그려봤습니다.',
