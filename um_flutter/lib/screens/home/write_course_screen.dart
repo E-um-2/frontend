@@ -1,16 +1,27 @@
 import 'dart:math';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:location/location.dart';
 
 import '../course/course_info_input_screen.dart';
 
-import 'package:location/location.dart';
-
 class WriteCourseScreen extends StatefulWidget {
-  final LatLng? initialPosition; // 선택된 장소 좌표 (옵셔널)
+  final LatLng? initialPosition;
+  final bool fromAi;
+  final List<LatLng>? aiPlaces;
+  final List<String>? aiPlaceNames;
 
-  const WriteCourseScreen({super.key, this.initialPosition});
+  const WriteCourseScreen({
+    super.key,
+    this.initialPosition,
+    this.fromAi = false,
+    this.aiPlaces,
+    this.aiPlaceNames,
+  });
 
   @override
   State<WriteCourseScreen> createState() => _WriteCourseScreenState();
@@ -20,30 +31,68 @@ class _WriteCourseScreenState extends State<WriteCourseScreen> {
   final List<LatLng> _tappedPoints = [];
   GoogleMapController? _mapController;
 
-  // 코스 그리기 누적 거리 관련
-  double _totalDistanceKm = 0;
-
-
-  BitmapDescriptor? _customMarker; // ✅ 커스텀 마커 변수 추가
-
+  BitmapDescriptor? _customMarker;
+  BitmapDescriptor? _aiMarker;
+  Set<Marker> _aiMarkers = {};
 
   late LatLng _initialPosition;
-  bool _isLocationReady = false; // 현재 위치 세팅 완료 여부
+  bool _isLocationReady = false;
+  bool _aiMarkersReady = false;
+
+  double _totalDistanceKm = 0;
 
   @override
   void initState() {
     super.initState();
-
-    // 경로그리기 마커 변화
-    _loadCustomMarker(); // ✅ 이 줄 추가
-
+    _loadCustomMarkerAndAiMarkers();
     _initLocation();
   }
 
+  Future<BitmapDescriptor> getResizedMarker(String assetPath, int width) async {
+    final ByteData byteData = await rootBundle.load(assetPath);
+    final codec = await ui.instantiateImageCodec(
+      byteData.buffer.asUint8List(),
+      targetWidth: width,
+    );
+    final frame = await codec.getNextFrame();
+    final resized = await frame.image.toByteData(format: ui.ImageByteFormat.png);
+    return BitmapDescriptor.fromBytes(resized!.buffer.asUint8List());
+  }
 
-  // ✅ [추가] 현재 위치를 가져와서 _initialPosition에 설정
+  void _loadCustomMarkerAndAiMarkers() async {
+    try {
+      final descriptor = await getResizedMarker('assets/images/blue_ring_marker.png', 80);
+      final aiIcon = await getResizedMarker('assets/images/red_pin_marker.png', 150);
+
+      if (!mounted) return;
+
+      setState(() {
+        _customMarker = descriptor;
+        _aiMarker = aiIcon;
+        _aiMarkersReady = true;
+
+        if (widget.fromAi && widget.aiPlaces != null) {
+          _aiMarkers = widget.aiPlaces!.asMap().entries.map((entry) {
+            final index = entry.key;
+            final latLng = entry.value;
+            final title = (widget.aiPlaceNames != null && widget.aiPlaceNames!.length > index)
+                ? widget.aiPlaceNames![index]
+                : "추천 장소";
+            return Marker(
+              markerId: MarkerId("ai_\${latLng.latitude}_\${latLng.longitude}"),
+              position: latLng,
+              icon: _aiMarker!,
+              infoWindow: InfoWindow(title: title),
+            );
+          }).toSet();
+        }
+      });
+    } catch (e) {
+      debugPrint("❌ 마커 이미지 로딩 실패: \$e");
+    }
+  }
+
   Future<void> _initLocation() async {
-
     try {
       Location location = Location();
 
@@ -63,40 +112,26 @@ class _WriteCourseScreenState extends State<WriteCourseScreen> {
 
       if (!mounted) return;
       setState(() {
-        _initialPosition = LatLng(currentLocation.latitude!, currentLocation.longitude!);
+        _initialPosition = widget.initialPosition ?? LatLng(currentLocation.latitude!, currentLocation.longitude!);
         _isLocationReady = true;
       });
     } catch (e) {
-      debugPrint('🚫 위치 초기화 실패: $e');
+      debugPrint('🚫 위치 초기화 실패: \$e');
     }
   }
 
-
-  void _loadCustomMarker() async {
-    final descriptor = await BitmapDescriptor.fromAssetImage(
-      const ImageConfiguration(size: Size(48, 48)),
-      'assets/images/blue_ring_marker.png', // ✅ 경로는 pubspec.yaml에 등록된 대로
-    );
-    setState(() {
-      _customMarker = descriptor;
-    });
-  }
-
-  // 코스 그리기 중 누적 거리 표시 (km)
   double _calculateDistance(LatLng start, LatLng end) {
     const double R = 6371;
-    double dLat = (end.latitude - start.latitude) * (3.141592653589793 / 180);
-    double dLng = (end.longitude - start.longitude) * (3.141592653589793 / 180);
+    double dLat = (end.latitude - start.latitude) * (pi / 180);
+    double dLng = (end.longitude - start.longitude) * (pi / 180);
     double a =
         sin(dLat / 2) * sin(dLat / 2) +
-            cos(start.latitude * (3.141592653589793 / 180)) *
-                cos(end.latitude * (3.141592653589793 / 180)) *
+            cos(start.latitude * (pi / 180)) *
+                cos(end.latitude * (pi / 180)) *
                 sin(dLng / 2) * sin(dLng / 2);
     double c = 2 * atan2(sqrt(a), sqrt(1 - a));
     return R * c;
   }
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -106,41 +141,43 @@ class _WriteCourseScreenState extends State<WriteCourseScreen> {
       );
     }
 
+    final Set<Marker> userMarkers = _tappedPoints.map((point) {
+      return Marker(
+        markerId: MarkerId(point.toString()),
+        position: point,
+        icon: _customMarker ?? BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
+        anchor: const Offset(0.5, 0.5),
+      );
+    }).toSet();
+
+    final Set<Marker> allMarkers = {..._aiMarkers, ...userMarkers};
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("코스 그리기"),
-        leading: BackButton(), // ← 이건 생략해도 기본으로 뒤로가기 생김
+        leading: const BackButton(),
       ),
       body: Stack(
         children: [
           GoogleMap(
-            zoomControlsEnabled: true, // 맵 + - 줌 비활성화
-            mapToolbarEnabled: false, // 마커 눌렀을때 네비게이션 길찾기 등 하단에 뜨는것 비활성화
+            zoomControlsEnabled: true,
+            mapToolbarEnabled: false,
             initialCameraPosition: CameraPosition(
               target: _initialPosition,
-              zoom: 15,
+              zoom: 16,
             ),
             onMapCreated: (controller) {
               _mapController = controller;
             },
             onTap: (LatLng latLng) {
               setState(() {
-                // 코스그리기 누적 거리 계산
                 if (_tappedPoints.isNotEmpty) {
                   _totalDistanceKm += _calculateDistance(_tappedPoints.last, latLng);
                 }
-
                 _tappedPoints.add(latLng);
               });
             },
-            markers: _tappedPoints.map((point) {
-              return Marker(
-                markerId: MarkerId(point.toString()),
-                position: point,
-                icon: _customMarker ?? BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure), // 파란색 마커
-                anchor: Offset(0.5, 0.5),
-              );
-            }).toSet(),
+            markers: allMarkers,
             polylines: {
               Polyline(
                 polylineId: const PolylineId('user_path'),
@@ -150,27 +187,6 @@ class _WriteCourseScreenState extends State<WriteCourseScreen> {
               )
             },
           ),
-          Positioned(
-            bottom: 30,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: ElevatedButton(
-                onPressed: _tappedPoints.length < 2
-                    ? null
-                    : () {
-                        _showCourseInfoBottomSheet(context, _tappedPoints);
-                      },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-                child: const Text("다음으로", style: TextStyle(fontSize: 16, color: Colors.white)),
-              ),
-            ),
-          ),
-
           Positioned(
             top: 16,
             right: 16,
@@ -188,7 +204,7 @@ class _WriteCourseScreenState extends State<WriteCourseScreen> {
                 ],
               ),
               child: Text(
-                "${_totalDistanceKm.toStringAsFixed(2)} km",
+                "\${_totalDistanceKm.toStringAsFixed(2)} km",
                 style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
@@ -197,12 +213,29 @@ class _WriteCourseScreenState extends State<WriteCourseScreen> {
               ),
             ),
           ),
-
-
+          Positioned(
+            bottom: 30,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: ElevatedButton(
+                onPressed: _tappedPoints.length < 2
+                    ? null
+                    : () {
+                  _showCourseInfoBottomSheet(context, _tappedPoints);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                child: const Text("다음으로", style: TextStyle(fontSize: 16, color: Colors.white)),
+              ),
+            ),
+          ),
         ],
       ),
     );
-
   }
 }
 
@@ -222,7 +255,7 @@ void _showCourseInfoBottomSheet(BuildContext context, List<LatLng> pathPoints) {
           const SizedBox(height: 20),
           ElevatedButton(
             onPressed: () {
-              Navigator.pop(context); // BottomSheet 닫기
+              Navigator.pop(context);
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -235,7 +268,7 @@ void _showCourseInfoBottomSheet(BuildContext context, List<LatLng> pathPoints) {
               padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 14),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
-            child: const Text("내 코스로 이동",style: TextStyle(color: Colors.white),),
+            child: const Text("내 코스로 이동", style: TextStyle(color: Colors.white)),
           ),
         ],
       ),

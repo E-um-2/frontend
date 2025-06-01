@@ -22,7 +22,7 @@ dependencies:
   share_plus: ^7.2.1
   intl: ^0.18.1
   device_info_plus: ^10.0.1
-  shared_preferences: ^2.2.2
+
 
 dev_dependencies:
   flutter_test:
@@ -38,6 +38,8 @@ flutter:
     - .env
     - assets/landmarks.json
     - assets/images/eum_logo.png
+    - assets/images/red_pin_marker.png
+    - assets/images/blue_ring_marker.png
     - assets/images/reward_unlocked.png
     - assets/images/reward_locked.png
     - assets/images/reward_header.png
@@ -49,3 +51,5 @@ flutter_icons:
   android: true
   ios: true
   image_path: "assets/images/icon.png"
+
+
