@@ -24,7 +24,7 @@ class NavHeader extends StatelessWidget implements PreferredSizeWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // 왼쪽 아이콘
+            // 왼쪽 뒤로가기 아이콘
             GestureDetector(
               onTap: onBack ?? () => context.pop(),
               child: const Icon(Icons.chevron_left, size: 28),
@@ -36,18 +36,20 @@ class NavHeader extends StatelessWidget implements PreferredSizeWidget {
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
 
-            // 오른쪽 '완료' 텍스트
-            GestureDetector(
-              onTap: onDone,
-              child: const Text(
-                '완료',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black, // 필요 시 Colors.blue로 변경 가능
-                ),
-              ),
-            ),
+            // 오른쪽 완료 버튼 (옵셔널)
+            onDone != null
+                ? GestureDetector(
+                    onTap: onDone,
+                    child: const Text(
+                      '완료',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
+                    ),
+                  )
+                : const SizedBox(width: 28), // 공간 맞추기용 빈 박스
           ],
         ),
       ),

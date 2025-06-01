@@ -1,92 +1,105 @@
+// router/app_router.dart
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:um_test/screens/explore/challenge_course_detail_screen.dart';
 import 'package:um_test/screens/explore/user_developred_course_detail_screen.dart';
+import 'package:um_test/screens/home/home_screen.dart';
+import 'package:um_test/screens/course/course_screen.dart';
+import 'package:um_test/screens/ai_pick/ai_pick_screen.dart';
+import 'package:um_test/screens/explore/explore_screen.dart';
+import 'package:um_test/screens/my_page/my_page_screen.dart';
 import 'package:um_test/shared/screens/driving_screen.dart';
+import 'package:um_test/screens/login/onboarding_screen.dart';
 
-import '../screens/home/home_screen.dart';
-import '../screens/course/course_screen.dart';
-import '../screens/ai_pick/ai_pick_screen.dart';
-import '../screens/explore/explore_screen.dart';
-import '../screens/my_page/my_page_screen.dart';
+GoRouter createRouter(String initialRoute) {
+  return GoRouter(
+    initialLocation: initialRoute,
+    routes: [
+      GoRoute(
+        path: '/onboarding',
+        builder: (context, state) => const OnboardingScreen(),
+      ),
+      ShellRoute(
+        builder: (BuildContext context, GoRouterState state, Widget child) {
+          final location = state.uri.path;
 
-final GoRouter router = GoRouter(
-  initialLocation: '/home',
-  routes: [
-    ShellRoute(
-      builder: (BuildContext context, GoRouterState state, Widget child) {
-        final location = state.uri.path;
-
-        return Scaffold(
-          body: SafeArea(child: child),
-          bottomNavigationBar: BottomNavigationBar(
-            backgroundColor: Colors.white,
-            currentIndex: _calculateIndex(location),
-            onTap: (index) => _onTap(context, index),
-            selectedItemColor: _getColor(_calculateIndex(location)),
-            unselectedItemColor: Colors.grey,
-            selectedFontSize: 11,
-            unselectedFontSize: 11,
-            type: BottomNavigationBarType.fixed,
-            items: const [
-              BottomNavigationBarItem(icon: Icon(Icons.map), label: '내 코스'),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.smart_toy),
-                label: 'AI 추천',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.directions_bike),
-                label: '홈',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.article_outlined),
-                label: '둘러보기',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.person_outline),
-                label: '마이',
-              ),
-            ],
+          return Scaffold(
+            body: SafeArea(child: child),
+            bottomNavigationBar: BottomNavigationBar(
+              backgroundColor: Colors.white,
+              currentIndex: _calculateIndex(location),
+              onTap: (index) => _onTap(context, index),
+              selectedItemColor: _getColor(_calculateIndex(location)),
+              unselectedItemColor: Colors.grey,
+              selectedFontSize: 11,
+              unselectedFontSize: 11,
+              type: BottomNavigationBarType.fixed,
+              items: const [
+                BottomNavigationBarItem(icon: Icon(Icons.map), label: '내 코스'),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.smart_toy),
+                  label: 'AI 추천',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.directions_bike),
+                  label: '홈',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.article_outlined),
+                  label: '둘러보기',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.person_outline),
+                  label: '마이',
+                ),
+              ],
+            ),
+          );
+        },
+        routes: [
+          GoRoute(
+            path: '/course',
+            builder: (context, state) => const CourseScreen(),
           ),
-        );
-      },
-      routes: [
-        GoRoute(
-          path: '/course',
-          builder: (context, state) => const CourseScreen(),
-        ),
-        GoRoute(path: '/ai',builder: (context, state) => AiPickScreen()),
-        GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
-        GoRoute(
-          path: '/explore',
-          builder: (context, state) => const ExploreScreen(),
-        ),
-        GoRoute(
-          path: '/mypage',
-          builder: (context, state) => const MyPageScreen(),
-        ),
-      ],
-    ),
-    GoRoute(
-      path: '/driving',
-      builder: (context, state) => const DrivingScreen(),
-    ),
-    GoRoute(
-      path: '/challenge/:id', // 🔹 :id 는 동적 파라미터
-      builder: (context, state) {
-        final id = state.pathParameters['id']!;
-        return ChallengeCourseDetailScreen(courseId: id);
-      },
-    ),
-    GoRoute(
-      path: '/user-course/:id',
-      builder: (context, state) {
-        final id = state.pathParameters['id']!;
-        return UserCourseDetailScreen(courseId: id); // 이제 오류 안 남
-      },
-    ),
-  ],
-);
+          GoRoute(
+            path: '/ai',
+            builder: (context, state) => const AiChatScreen(),
+          ),
+          GoRoute(
+            path: '/home',
+            builder: (context, state) => const HomeScreen(),
+          ),
+          GoRoute(
+            path: '/explore',
+            builder: (context, state) => const ExploreScreen(),
+          ),
+          GoRoute(
+            path: '/mypage',
+            builder: (context, state) => const MyPageScreen(),
+          ),
+        ],
+      ),
+      GoRoute(
+        path: '/driving',
+        builder: (context, state) => const DrivingScreen(),
+      ),
+      GoRoute(
+        path: '/challenge/:id',
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return ChallengeCourseDetailScreen(courseId: id);
+        },
+      ),
+      GoRoute(
+        path: '/user-course/:id',
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return UserCourseDetailScreen(courseId: id);
+        },
+      ),
+    ],
+  );
+}
 
 int _calculateIndex(String location) {
   switch (location) {

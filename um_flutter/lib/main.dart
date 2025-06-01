@@ -1,19 +1,26 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'router/app_router.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart'; // ✅ dotenv import
+import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:um_test/router/app_router.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized(); // 반드시 있어야 함
+  WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load();
 
-  await dotenv.load(); // fileName 생략: assets에서 자동 탐지
+  final prefs = await SharedPreferences.getInstance();
+  final alreadyLaunched = prefs.getBool('alreadyLaunched') ?? false;
 
-  runApp(const MyApp());
+  final initialRoute = alreadyLaunched ? '/home' : '/onboarding';
+  final router = createRouter(initialRoute);
+
+  runApp(MyApp(router: router));
 }
 
-
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final GoRouter router;
+
+  const MyApp({super.key, required this.router});
 
   @override
   Widget build(BuildContext context) {

@@ -35,6 +35,9 @@ class CourseCard extends StatelessWidget {
         : course!.isCompleted;
     final completedColor =
         course?.completedColor ?? _getCompletedColor(context);
+    final isAnyoneCompleted = !isChallenge && isUserCourse
+        ? (course as UserDevelopedCourseModel).isAnyoneCompleted
+        : false;
 
     return Column(
       children: [
@@ -43,6 +46,7 @@ class CourseCard extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           color: Colors.white,
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
@@ -74,6 +78,17 @@ class CourseCard extends StatelessWidget {
                       "$distance | $duration",
                       style: const TextStyle(fontSize: 10, color: Colors.grey),
                     ),
+                    if (isAnyoneCompleted) ...[
+                      const SizedBox(height: 4),
+                      const Text(
+                        '이 경로를 완주한 사람이 존재해요 !',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                          color: Color.fromARGB(255, 0, 0, 0),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 6),
                     Row(
                       children: [
@@ -92,8 +107,6 @@ class CourseCard extends StatelessWidget {
                             color: isCompleted ? completedColor : Colors.grey,
                           ),
                         ),
-
-                        // 🔹 사용자 개발 코스일 경우 추천/스크랩 표시
                         if (!isChallenge && isUserCourse) ...[
                           const SizedBox(width: 12),
                           const Icon(
