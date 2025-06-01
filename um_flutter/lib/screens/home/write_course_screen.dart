@@ -204,7 +204,7 @@ class _WriteCourseScreenState extends State<WriteCourseScreen> {
                 ],
               ),
               child: Text(
-                "\${_totalDistanceKm.toStringAsFixed(2)} km",
+                "${_totalDistanceKm.toStringAsFixed(2)} km",
                 style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
