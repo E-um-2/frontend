@@ -98,11 +98,6 @@ class _CourseInfoInputScreenState extends State<CourseInfoInputScreen> {
               padding: const EdgeInsets.all(20),
               child: Column(
                 children: [
-                  TextField(
-                    controller: nameController,
-                    decoration: const InputDecoration(labelText: "코스 이름"),
-                  ),
-                  const SizedBox(height: 10),
 
                   // ✅ 총 거리 표시 (수정 불가)
                   TextFormField(
@@ -114,6 +109,13 @@ class _CourseInfoInputScreenState extends State<CourseInfoInputScreen> {
                     enabled: false,
                   ),
                   const SizedBox(height: 10),
+
+                  TextField(
+                    controller: nameController,
+                    decoration: const InputDecoration(labelText: "코스 이름"),
+                  ),
+                  const SizedBox(height: 10),
+
 
                   TextField(
                     controller: timeController,
