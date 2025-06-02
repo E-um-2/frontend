@@ -222,7 +222,7 @@ class _WriteCourseScreenState extends State<WriteCourseScreen> {
                 onPressed: _tappedPoints.length < 2
                     ? null
                     : () {
-                  _showCourseInfoBottomSheet(context, _tappedPoints);
+                  _showCourseInfoBottomSheet(context, _tappedPoints, _totalDistanceKm);
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue,
@@ -239,7 +239,7 @@ class _WriteCourseScreenState extends State<WriteCourseScreen> {
   }
 }
 
-void _showCourseInfoBottomSheet(BuildContext context, List<LatLng> pathPoints) {
+void _showCourseInfoBottomSheet(BuildContext context, List<LatLng> pathPoints, double totalDistance) {
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
@@ -259,7 +259,10 @@ void _showCourseInfoBottomSheet(BuildContext context, List<LatLng> pathPoints) {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => CourseInfoInputScreen(pathPoints: pathPoints),
+                  builder: (_) => CourseInfoInputScreen(
+                      pathPoints: pathPoints,
+                      totalDistanceKm: totalDistance,
+                    ),
                 ),
               );
             },
