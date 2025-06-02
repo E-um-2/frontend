@@ -45,7 +45,7 @@ final List<UserDevelopedCourseModel> mockUserDevelopedCourses = [
     distance: '1.6km',
     duration: '15분',
     imageUrl: 'assets/images/course3.png',
-    isCompleted: false,
+    isCompleted: true,
     isAnyoneCompleted: false, // ✅ 추가
     completedColor: Color(0xFF38CCBE),
     likes: 0,
@@ -53,8 +53,8 @@ final List<UserDevelopedCourseModel> mockUserDevelopedCourses = [
     reports: 0,
     isUploadedByUser: true,
     description: '기하학적인 아름다움에 도전했어요.\n인천대 캠퍼스를 사각형으로 감싸듯 정확하게 그려봤습니다.',
-    authorName: '재일',
-    createdAt: '05/20 13:22',
+    authorName: '이음이',
+    createdAt: '06/02 17:39',
   ),
 ];
 
@@ -80,6 +80,17 @@ final List<DrawnCourseModel> mockDrawnCourses = [
     isCompleted: false,
     completedColor: Color(0xFF00A2FF),
     description: '정사각형 모양을 만들기 위해 여러 번 그렸어요!',
+  ),
+  DrawnCourseModel(
+    id: 's3',
+    title: '정사각형의 미학',
+    location: '인천대학교',
+    distance: '1.6km',
+    duration: '15분',
+    imageUrl: 'assets/images/course3.png',
+    isCompleted: false,
+    completedColor: Color(0xFF38CCBE),
+    description: '기하학적인 아름다움에 도전했어요.\n인천대 캠퍼스를 사각형으로 감싸듯 정확하게 그려봤습니다.',
   ),
 ];
 
