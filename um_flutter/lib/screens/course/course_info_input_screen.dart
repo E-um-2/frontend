@@ -27,8 +27,12 @@ import 'package:uuid/uuid.dart'; // 고유 ID 생성용 (pubspec.yaml에 의존�
 
 class CourseInfoInputScreen extends StatefulWidget {
   final List<LatLng> pathPoints;
+  final double totalDistanceKm;
 
-  const CourseInfoInputScreen({super.key, required this.pathPoints});
+  const CourseInfoInputScreen({
+    super.key,
+    required this.pathPoints,
+    required this.totalDistanceKm});
 
   @override
   State<CourseInfoInputScreen> createState() => _CourseInfoInputScreenState();
@@ -99,6 +103,18 @@ class _CourseInfoInputScreenState extends State<CourseInfoInputScreen> {
                     decoration: const InputDecoration(labelText: "코스 이름"),
                   ),
                   const SizedBox(height: 10),
+
+                  // ✅ 총 거리 표시 (수정 불가)
+                  TextFormField(
+                    initialValue: "${widget.totalDistanceKm.toStringAsFixed(2)} km",
+                    decoration: const InputDecoration(
+                      labelText: "총 거리",
+                      border: OutlineInputBorder(),
+                    ),
+                    enabled: false,
+                  ),
+                  const SizedBox(height: 10),
+
                   TextField(
                     controller: timeController,
                     decoration: const InputDecoration(labelText: "예상 소요 시간 (예: 1시간)"),
@@ -171,7 +187,7 @@ class _CourseInfoInputScreenState extends State<CourseInfoInputScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 14),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
-              child: const Text("내 코스로 이동"),
+              child: const Text("내 코스로 이동", style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
