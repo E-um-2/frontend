@@ -1,6 +1,7 @@
 # 11회 인천광역시 공공데이터 경진대회
 
-이음이입니다. Flutter + Firebase
+인천만의 자전거 플랫폼 이음이입니다. 
+개발 언어 : Flutter + Firebase
 
 
 ## Team - 이음이
